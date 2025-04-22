@@ -1,0 +1,21 @@
+
+{% extends 'base.html' %}
+{% block content %}
+<h1>Feed</h1>
+{% if message %}<div class="alert alert-warning">{{ message }}</div>{% endif %}
+<form method="POST">
+  <div class="mb-3">
+    <textarea name="post_text" class="form-control" placeholder="What's on your mind?" rows="3"></textarea>
+  </div>
+  <button type="submit" class="btn btn-primary">Post</button>
+</form>
+<hr>
+{% for post in posts %}
+  <div class="card mb-2">
+    <div class="card-body">
+      <h6 class="card-subtitle mb-2 text-muted">{{ post.username }}</h6>
+      <p class="card-text">{{ post.text }}</p>
+    </div>
+  </div>
+{% endfor %}
+{% endblock %}
