@@ -7,7 +7,7 @@ import pickle
 import os
 
 # === Paramètres depuis variables d’environnement (pour la conteneurisation) ===
-DATASET_PATH = os.getenv("DATASET_PATH", "data/models/dataset/Dataset_IoT_-_Data_Center.csv")
+DATASET_PATH = os.getenv("DATASET_PATH", "data/models/dataset/Dataset_-_Fan_Activation_Logic.csv")
 MODEL_PATH = os.getenv("MODEL_PATH", "data/models/RF_model.pkl")
 SCALER_PATH = os.getenv("SCALER_PATH", "data/models/scaler.pkl")
 
@@ -16,8 +16,8 @@ print(f"📂 Lecture du fichier dataset : {DATASET_PATH}")
 df = pd.read_csv(DATASET_PATH)
 
 # === Features et target ===
-X = df[['temperature', 'humidity', 'current', 'pressure']]
-y = df['energy_consumption']
+X = df[['temperature','humidity','current','pressure','energy','workload']]
+y = df['fan_on']
 
 # === Standardisation ===
 scaler = StandardScaler()
@@ -39,3 +39,14 @@ model.fit(X_train, y_train)
 with open(MODEL_PATH, 'wb') as f:
     pickle.dump(model, f)
 print(f"✅ Modèle sauvegardé : {MODEL_PATH}")
+
+import shap
+
+explainer = shap.TreeExplainer(model)
+shap_values = explainer.shap_values(X_train)
+
+# Vérifie si shap_values est une liste ou un seul tableau
+if isinstance(shap_values, list) and len(shap_values) == 2:
+    shap.summary_plot(shap_values[1], X_train, feature_names=X.columns, plot_type="bar")
+else:
+    shap.summary_plot(shap_values, X_train, feature_names=X.columns, plot_type="bar")
