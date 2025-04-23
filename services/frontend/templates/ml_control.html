@@ -1,5 +1,255 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>Ml Control</h1>
-<p>This is a placeholder page for ml_control.</p>
+<div class="container">
+  <h1 class="mb-4"><i class="fas fa-brain me-2"></i>ML Energy Control</h1>
+  
+  <div class="row g-4 mb-4">
+    <!-- Prediction Card -->
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header bg-primary text-white">
+          <i class="fas fa-chart-line me-2"></i>Current Prediction
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <h3 class="text-center"><i class="fas fa-bolt me-2"></i>Next Hour</h3>
+              <div class="display-4 text-center text-primary">3.2 kWh</div>
+            </div>
+            <div class="col-md-6">
+              <h3 class="text-center"><i class="fas fa-check-circle me-2"></i>Confidence</h3>
+              <div class="display-4 text-center text-success">92%</div>
+            </div>
+          </div>
+          <hr>
+          <h4 class="text-center mb-3">Recommended Source</h4>
+          <div class="text-center">
+            <span class="badge bg-success p-3 fs-4">
+              <i class="fas fa-solar-panel me-2"></i>Solar
+            </span>
+          </div>
+        </div>
+        <div class="card-footer small text-muted">
+          Updated: <span class="live-time">Just now</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Energy Availability Card -->
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header bg-info text-white">
+          <i class="fas fa-chart-pie me-2"></i>Energy Availability
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-4 text-center">
+              <i class="fas fa-sun fa-3x text-warning mb-2"></i>
+              <h5>Solar</h5>
+              <h4 class="text-warning">4.1 kWh</h4>
+            </div>
+            <div class="col-md-4 text-center">
+              <i class="fas fa-wind fa-3x text-info mb-2"></i>
+              <h5>Wind</h5>
+              <h4 class="text-info">1.8 kWh</h4>
+            </div>
+            <div class="col-md-4 text-center">
+              <i class="fas fa-battery-three-quarters fa-3x text-success mb-2"></i>
+              <h5>Battery</h5>
+              <h4 class="text-success">5.6 kWh</h4>
+            </div>
+          </div>
+          <div class="chart-container mt-3" style="height: 150px;">
+            <canvas id="availabilityChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Model Insights -->
+  <div class="card mb-4">
+    <div class="card-header bg-secondary text-white">
+      <i class="fas fa-microscope me-2"></i>Model Insights
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <h4><i class="fas fa-project-diagram me-2"></i>Model Details</h4>
+          <ul class="list-group list-group-flush mb-4">
+            <li class="list-group-item"><strong>Type:</strong> XGBoostRegressor</li>
+            <li class="list-group-item"><strong>Version:</strong> 2.1.3</li>
+            <li class="list-group-item"><strong>Last Trained:</strong> 2 hours ago</li>
+            <li class="list-group-item"><strong>Accuracy:</strong> 91.2%</li>
+          </ul>
+          
+          <h4><i class="fas fa-sliders-h me-2"></i>Controls</h4>
+          <div class="d-grid gap-2">
+            <button class="btn btn-primary">
+              <i class="fas fa-sync me-2"></i>Retrain Model
+            </button>
+            <button class="btn btn-info">
+              <i class="fas fa-redo me-2"></i>Update Prediction
+            </button>
+            <button class="btn btn-outline-secondary">
+              <i class="fas fa-terminal me-2"></i>Show ML Logs
+            </button>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <h4><i class="fas fa-list-ol me-2"></i>Input Features</h4>
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Feature</th>
+                  <th>Current Value</th>
+                  <th>Importance</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Temperature</td>
+                  <td>24.5°C</td>
+                  <td>0.32</td>
+                </tr>
+                <tr>
+                  <td>Humidity</td>
+                  <td>45%</td>
+                  <td>0.18</td>
+                </tr>
+                <tr>
+                  <td>Wind Speed</td>
+                  <td>12 km/h</td>
+                  <td>0.25</td>
+                </tr>
+                <tr>
+                  <td>Solar Irradiance</td>
+                  <td>850 W/m²</td>
+                  <td>0.42</td>
+                </tr>
+                <tr>
+                  <td>Time of Day</td>
+                  <td>Afternoon</td>
+                  <td>0.28</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Visualizations -->
+  <div class="card mb-4">
+    <div class="card-header bg-dark text-white">
+      <i class="fas fa-chart-area me-2"></i>Performance Visualizations
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <h5 class="text-center">Predicted vs Actual (24h)</h5>
+          <div class="chart-container" style="height: 250px;">
+            <canvas id="predictionChart"></canvas>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <h5 class="text-center">Recommendation Distribution</h5>
+          <div class="chart-container" style="height: 250px;">
+            <canvas id="recommendationChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Availability Chart
+    const availCtx = document.getElementById('availabilityChart').getContext('2d');
+    new Chart(availCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Solar', 'Wind', 'Battery'],
+        datasets: [{
+          data: [4.1, 1.8, 5.6],
+          backgroundColor: [
+            'rgba(255, 193, 7, 0.8)',
+            'rgba(23, 162, 184, 0.8)',
+            'rgba(40, 167, 69, 0.8)'
+          ]
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } }
+      }
+    });
+
+    // Prediction vs Actual Chart
+    const predCtx = document.getElementById('predictionChart').getContext('2d');
+    new Chart(predCtx, {
+      type: 'line',
+      data: {
+        labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+        datasets: [
+          {
+            label: 'Predicted',
+            data: [3.1, 3.0, 2.9, 2.8, 2.7, 2.8, 3.0, 3.5, 4.0, 4.2, 4.1, 4.0, 3.9, 3.8, 3.7, 3.6, 3.5, 3.6, 3.8, 4.0, 4.2, 4.1, 4.0, 3.8],
+            borderColor: 'rgba(13, 110, 253, 1)',
+            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+            tension: 0.4
+          },
+          {
+            label: 'Actual',
+            data: [3.2, 3.1, 2.8, 2.7, 2.6, 2.9, 3.1, 3.6, 4.1, 4.3, 4.0, 3.9, 3.8, 3.9, 3.6, 3.5, 3.4, 3.7, 3.9, 4.1, 4.3, 4.2, 4.1, 3.9],
+            borderColor: 'rgba(40, 167, 69, 1)',
+            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+            tension: 0.4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false
+      }
+    });
+
+    // Recommendation Chart
+    const recCtx = document.getElementById('recommendationChart').getContext('2d');
+    new Chart(recCtx, {
+      type: 'pie',
+      data: {
+        labels: ['Solar', 'Wind', 'Battery'],
+        datasets: [{
+          data: [65, 20, 15],
+          backgroundColor: [
+            'rgba(255, 193, 7, 0.8)',
+            'rgba(23, 162, 184, 0.8)',
+            'rgba(40, 167, 69, 0.8)'
+          ]
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return `${context.label}: ${context.raw}%`;
+              }
+            }
+          }
+        }
+      }
+    });
+  });
+</script>
 {% endblock %}

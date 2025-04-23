@@ -1,5 +1,1769 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>Workflow</h1>
-<p>This is a placeholder page for workflow.</p>
+<div class="container">
+  <h1 class="mb-4"><i class="fas fa-users me-2"></i>Workload Simulator</h1>
+  
+  <div class="row g-4 mb-4">
+    <!-- Simulation Controls -->
+    <div class="col-md-5">
+      <div class="card h-100">
+        <div class="card-header bg-primary text-white">
+          <i class="fas fa-tachometer-alt me-2"></i>Load Parameters
+        </div>
+        <div class="card-body">
+          <form id="simulationForm">
+            <div class="mb-3">
+              <label class="form-label">Number of Users</label>
+              <input type="number" class="form-control" id="userCount" min="1" max="1000" value="50">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Posts per Minute</label>
+              <input type="number" class="form-control" id="postRate" min="1" max="100" value="10">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Post Length (chars)</label>
+              <input type="number" class="form-control" id="postLength" min="10" max="500" value="120">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Duration (minutes)</label>
+              <input type="number" class="form-control" id="duration" min="1" max="60" value="5">
+            </div>
+            <div class="mb-3 form-check">
+              <input type="checkbox" class="form-check-input" id="randomUsers" checked>
+              <label class="form-check-label">Randomize user activity</label>
+            </div>
+            <div class="d-grid gap-2">
+              <button type="button" class="btn btn-primary" id="startSimulation">
+                <i class="fas fa-play me-2"></i>Start Simulation
+              </button>
+              <button type="button" class="btn btn-danger" id="stopSimulation" disabled>
+                <i class="fas fa-stop me-2"></i>Stop Simulation
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Stats -->
+    <div class="col-md-7">
+      <div class="card h-100">
+        <div class="card-header bg-success text-white">
+          <i class="fas fa-chart-bar me-2"></i>Live Statistics
+        </div>
+        <div class="card-body">
+          <div class="row text-center mb-3">
+            <div class="col-md-4">
+              <h5>Active Users</h5>
+              <h2 id="activeUsers" class="text-primary">0</h2>
+            </div>
+            <div class="col-md-4">
+              <h5>Posts/Min</h5>
+              <h2 id="postsPerMin" class="text-info">0</h2>
+            </div>
+            <div class="col-md-4">
+              <h5>Total Posts</h5>
+              <h2 id="totalPosts" class="text-success">0</h2>
+            </div>
+          </div>
+          <div class="chart-container" style="height: 200px;">
+            <canvas id="loadChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Impact -->
+  <div class="card mb-4">
+    <div class="card-header bg-warning text-dark">
+      <i class="fas fa-server me-2"></i>System Impact
+    </div>
+    <div class="card-body">
+      <div class="row text-center">
+        <div class="col-md-3">
+          <h5>CPU Usage</h5>
+          <div class="progress">
+            <div id="cpuUsage" class="progress-bar bg-danger" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Memory Usage</h5>
+          <div class="progress">
+            <div id="memUsage" class="progress-bar bg-info" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Database Load</h5>
+          <div class="progress">
+            <div id="dbLoad" class="progress-bar bg-warning" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Network Traffic</h5>
+          <div class="progress">
+            <div id="netTraffic" class="progress-bar bg-success" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity Feed -->
+  <div class="card">
+    <div class="card-header bg-dark text-white">
+      <i class="fas fa-comments me-2"></i>Simulated Activity Feed
+    </div>
+    <div class="card-body p-0">
+      <div id="activityFeed" style="height: 300px; overflow-y: auto;">
+        <div class="list-group list-group-flush">
+          <div class="list-group-item text-muted text-center py-5">
+            Simulation will display live feed activity here
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    let simulationInterval;
+    let simChart;
+    const samplePosts = [
+      "Just checked the energy stats - looking good!",
+      "Our solar panels are generating 4.2kW right now",
+      "Switched to battery power during peak hours",
+      "The new ML model predictions are accurate",
+      "Wind turbine output is lower than expected today",
+      "Reduced server load by 15% with optimizations",
+      "Data center temperature stable at 24°C",
+      "Implemented new cooling strategy - working well",
+      "Energy consumption trending downward this week",
+      "The green meter shows excellent efficiency"
+    ];
+
+    // Initialize chart
+    const ctx = document.getElementById('loadChart').getContext('2d');
+    simChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: Array.from({length: 10}, (_, i) => i),
+        datasets: [{
+          label: 'Active Users',
+          data: [],
+          borderColor: 'rgba(13, 110, 253, 1)',
+          backgroundColor: 'rgba(13, 110, 253, 0.1)',
+          tension: 0.4
+        }, {
+          label: 'Posts/Min',
+          data: [],
+          borderColor: 'rgba(40, 167, 69, 1)',
+          backgroundColor: 'rgba(40, 167, 69, 0.1)',
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+    // Start simulation
+    document.getElementById('startSimulation').addEventListener('click', function() {
+      const userCount = parseInt(document.getElementById('userCount').value);
+      const postRate = parseInt(document.getElementById('postRate').value);
+      const duration = parseInt(document.getElementById('duration').value);
+      const postLength = parseInt(document.getElementById('postLength').value);
+      const randomUsers = document.getElementById('randomUsers').checked;
+      
+      let totalPosts = 0;
+      let activeUsers = 0;
+      let postsPerMin = 0;
+      let timeElapsed = 0;
+      
+      // Reset UI
+      document.getElementById('startSimulation').disabled = true;
+      document.getElementById('stopSimulation').disabled = false;
+      document.getElementById('activityFeed').innerHTML = 
+        '<div class="list-group list-group-flush"></div>';
+      
+      // Start simulation loop
+      simulationInterval = setInterval(function() {
+        timeElapsed++;
+        
+        // Update random active users
+        activeUsers = randomUsers ? 
+          Math.floor(userCount * (0.3 + Math.random() * 0.7)) : 
+          userCount;
+          
+        // Generate posts
+        postsPerMin = Math.floor(postRate * (0.5 + Math.random()));
+        totalPosts += postsPerMin;
+        
+        // Update stats
+        document.getElementById('activeUsers').textContent = activeUsers;
+        document.getElementById('postsPerMin').textContent = postsPerMin;
+        document.getElementById('totalPosts').textContent = totalPosts;
+        
+        // Update system impact
+        updateSystemImpact(activeUsers, postsPerMin);
+        
+        // Update chart
+        update
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h1 class="mb-4"><i class="fas fa-users me-2"></i>Feed Load Simulator</h1>
+  
+  <div class="row g-4 mb-4">
+    <!-- Simulation Controls -->
+    <div class="col-md-5">
+      <div class="card h-100">
+        <div class="card-header bg-primary text-white">
+          <i class="fas fa-tachometer-alt me-2"></i>Load Parameters
+        </div>
+        <div class="card-body">
+          <form id="simulationForm">
+            <div class="mb-3">
+              <label class="form-label">Number of Users</label>
+              <input type="number" class="form-control" id="userCount" min="1" max="1000" value="50">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Posts per Minute</label>
+              <input type="number" class="form-control" id="postRate" min="1" max="100" value="10">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Post Length (chars)</label>
+              <input type="number" class="form-control" id="postLength" min="10" max="500" value="120">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Duration (minutes)</label>
+              <input type="number" class="form-control" id="duration" min="1" max="60" value="5">
+            </div>
+            <div class="mb-3 form-check">
+              <input type="checkbox" class="form-check-input" id="randomUsers" checked>
+              <label class="form-check-label">Randomize user activity</label>
+            </div>
+            <div class="d-grid gap-2">
+              <button type="button" class="btn btn-primary" id="startSimulation">
+                <i class="fas fa-play me-2"></i>Start Simulation
+              </button>
+              <button type="button" class="btn btn-danger" id="stopSimulation" disabled>
+                <i class="fas fa-stop me-2"></i>Stop Simulation
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Stats -->
+    <div class="col-md-7">
+      <div class="card h-100">
+        <div class="card-header bg-success text-white">
+          <i class="fas fa-chart-bar me-2"></i>Live Statistics
+        </div>
+        <div class="card-body">
+          <div class="row text-center mb-3">
+            <div class="col-md-4">
+              <h5>Active Users</h5>
+              <h2 id="activeUsers" class="text-primary">0</h2>
+            </div>
+            <div class="col-md-4">
+              <h5>Posts/Min</h5>
+              <h2 id="postsPerMin" class="text-info">0</h2>
+            </div>
+            <div class="col-md-4">
+              <h5>Total Posts</h5>
+              <h2 id="totalPosts" class="text-success">0</h2>
+            </div>
+          </div>
+          <div class="chart-container" style="height: 200px;">
+            <canvas id="loadChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Impact -->
+  <div class="card mb-4">
+    <div class="card-header bg-warning text-dark">
+      <i class="fas fa-server me-2"></i>System Impact
+    </div>
+    <div class="card-body">
+      <div class="row text-center">
+        <div class="col-md-3">
+          <h5>CPU Usage</h5>
+          <div class="progress">
+            <div id="cpuUsage" class="progress-bar bg-danger" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Memory Usage</h5>
+          <div class="progress">
+            <div id="memUsage" class="progress-bar bg-info" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Database Load</h5>
+          <div class="progress">
+            <div id="dbLoad" class="progress-bar bg-warning" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Network Traffic</h5>
+          <div class="progress">
+            <div id="netTraffic" class="progress-bar bg-success" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity Feed -->
+  <div class="card">
+    <div class="card-header bg-dark text-white">
+      <i class="fas fa-comments me-2"></i>Simulated Activity Feed
+    </div>
+    <div class="card-body p-0">
+      <div id="activityFeed" style="height: 300px; overflow-y: auto;">
+        <div class="list-group list-group-flush">
+          <div class="list-group-item text-muted text-center py-5">
+            Simulation will display live feed activity here
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    let simulationInterval;
+    let simChart;
+    const samplePosts = [
+      "Just checked the energy stats - looking good!",
+      "Our solar panels are generating 4.2kW right now",
+      "Switched to battery power during peak hours",
+      "The new ML model predictions are accurate",
+      "Wind turbine output is lower than expected today",
+      "Reduced server load by 15% with optimizations",
+      "Data center temperature stable at 24°C",
+      "Implemented new cooling strategy - working well",
+      "Energy consumption trending downward this week",
+      "The green meter shows excellent efficiency"
+    ];
+
+    // Initialize chart
+    const ctx = document.getElementById('loadChart').getContext('2d');
+    simChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: Array.from({length: 10}, (_, i) => i),
+        datasets: [{
+          label: 'Active Users',
+          data: [],
+          borderColor: 'rgba(13, 110, 253, 1)',
+          backgroundColor: 'rgba(13, 110, 253, 0.1)',
+          tension: 0.4
+        }, {
+          label: 'Posts/Min',
+          data: [],
+          borderColor: 'rgba(40, 167, 69, 1)',
+          backgroundColor: 'rgba(40, 167, 69, 0.1)',
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+    // Start simulation
+    document.getElementById('startSimulation').addEventListener('click', function() {
+      const userCount = parseInt(document.getElementById('userCount').value);
+      const postRate = parseInt(document.getElementById('postRate').value);
+      const duration = parseInt(document.getElementById('duration').value);
+      const postLength = parseInt(document.getElementById('postLength').value);
+      const randomUsers = document.getElementById('randomUsers').checked;
+      
+      let totalPosts = 0;
+      let activeUsers = 0;
+      let postsPerMin = 0;
+      let timeElapsed = 0;
+      
+      // Reset UI
+      document.getElementById('startSimulation').disabled = true;
+      document.getElementById('stopSimulation').disabled = false;
+      document.getElementById('activityFeed').innerHTML = 
+        '<div class="list-group list-group-flush"></div>';
+      
+      // Start simulation loop
+      simulationInterval = setInterval(function() {
+        timeElapsed++;
+        
+        // Update random active users
+        activeUsers = randomUsers ? 
+          Math.floor(userCount * (0.3 + Math.random() * 0.7)) : 
+          userCount;
+          
+        // Generate posts
+        postsPerMin = Math.floor(postRate * (0.5 + Math.random()));
+        totalPosts += postsPerMin;
+        
+        // Update stats
+        document.getElementById('activeUsers').textContent = activeUsers;
+        document.getElementById('postsPerMin').textContent = postsPerMin;
+        document.getElementById('totalPosts').textContent = totalPosts;
+        
+        // Update system impact
+        updateSystemImpact(activeUsers, postsPerMin);
+        
+        // Update chart
+        updateChartData(activeUsers, postsPerMin);
+        
+        // Generate feed activity
+        generateFeedActivity(postsPerMin, postLength);
+        
+        // Check if simulation should end
+        if (timeElapsed >= duration) {
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h1 class="mb-4"><i class="fas fa-users me-2"></i>Workload Simulator</h1>
+  
+  <div class="row g-4 mb-4">
+    <!-- Simulation Controls -->
+    <div class="col-md-5">
+      <div class="card h-100">
+        <div class="card-header bg-primary text-white">
+          <i class="fas fa-tachometer-alt me-2"></i>Load Parameters
+        </div>
+        <div class="card-body">
+          <form id="simulationForm">
+            <div class="mb-3">
+              <label class="form-label">Number of Users</label>
+              <input type="number" class="form-control" id="userCount" min="1" max="1000" value="50">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Posts per Minute</label>
+              <input type="number" class="form-control" id="postRate" min="1" max="100" value="10">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Post Length (chars)</label>
+              <input type="number" class="form-control" id="postLength" min="10" max="500" value="120">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Duration (minutes)</label>
+              <input type="number" class="form-control" id="duration" min="1" max="60" value="5">
+            </div>
+            <div class="mb-3 form-check">
+              <input type="checkbox" class="form-check-input" id="randomUsers" checked>
+              <label class="form-check-label">Randomize user activity</label>
+            </div>
+            <div class="d-grid gap-2">
+              <button type="button" class="btn btn-primary" id="startSimulation">
+                <i class="fas fa-play me-2"></i>Start Simulation
+              </button>
+              <button type="button" class="btn btn-danger" id="stopSimulation" disabled>
+                <i class="fas fa-stop me-2"></i>Stop Simulation
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Stats -->
+    <div class="col-md-7">
+      <div class="card h-100">
+        <div class="card-header bg-success text-white">
+          <i class="fas fa-chart-bar me-2"></i>Live Statistics
+        </div>
+        <div class="card-body">
+          <div class="row text-center mb-3">
+            <div class="col-md-4">
+              <h5>Active Users</h5>
+              <h2 id="activeUsers" class="text-primary">0</h2>
+            </div>
+            <div class="col-md-4">
+              <h5>Posts/Min</h5>
+              <h2 id="postsPerMin" class="text-info">0</h2>
+            </div>
+            <div class="col-md-4">
+              <h5>Total Posts</h5>
+              <h2 id="totalPosts" class="text-success">0</h2>
+            </div>
+          </div>
+          <div class="chart-container" style="height: 200px;">
+            <canvas id="loadChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Impact -->
+  <div class="card mb-4">
+    <div class="card-header bg-warning text-dark">
+      <i class="fas fa-server me-2"></i>System Impact
+    </div>
+    <div class="card-body">
+      <div class="row text-center">
+        <div class="col-md-3">
+          <h5>CPU Usage</h5>
+          <div class="progress">
+            <div id="cpuUsage" class="progress-bar bg-danger" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Memory Usage</h5>
+          <div class="progress">
+            <div id="memUsage" class="progress-bar bg-info" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Database Load</h5>
+          <div class="progress">
+            <div id="dbLoad" class="progress-bar bg-warning" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Network Traffic</h5>
+          <div class="progress">
+            <div id="netTraffic" class="progress-bar bg-success" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity Feed -->
+  <div class="card">
+    <div class="card-header bg-dark text-white">
+      <i class="fas fa-comments me-2"></i>Simulated Activity Feed
+    </div>
+    <div class="card-body p-0">
+      <div id="activityFeed" style="height: 300px; overflow-y: auto;">
+        <div class="list-group list-group-flush">
+          <div class="list-group-item text-muted text-center py-5">
+            Simulation will display live feed activity here
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    let simulationInterval;
+    let simChart;
+    const samplePosts = [
+      "Just checked the energy stats - looking good!",
+      "Our solar panels are generating 4.2kW right now",
+      "Switched to battery power during peak hours",
+      "The new ML model predictions are accurate",
+      "Wind turbine output is lower than expected today",
+      "Reduced server load by 15% with optimizations",
+      "Data center temperature stable at 24°C",
+      "Implemented new cooling strategy - working well",
+      "Energy consumption trending downward this week",
+      "The green meter shows excellent efficiency"
+    ];
+
+    // Initialize chart
+    const ctx = document.getElementById('loadChart').getContext('2d');
+    simChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: Array.from({length: 10}, (_, i) => i),
+        datasets: [{
+          label: 'Active Users',
+          data: [],
+          borderColor: 'rgba(13, 110, 253, 1)',
+          backgroundColor: 'rgba(13, 110, 253, 0.1)',
+          tension: 0.4
+        }, {
+          label: 'Posts/Min',
+          data: [],
+          borderColor: 'rgba(40, 167, 69, 1)',
+          backgroundColor: 'rgba(40, 167, 69, 0.1)',
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+    // Start simulation
+    document.getElementById('startSimulation').addEventListener('click', function() {
+      const userCount = parseInt(document.getElementById('userCount').value);
+      const postRate = parseInt(document.getElementById('postRate').value);
+      const duration = parseInt(document.getElementById('duration').value);
+      const postLength = parseInt(document.getElementById('postLength').value);
+      const randomUsers = document.getElementById('randomUsers').checked;
+      
+      let totalPosts = 0;
+      let activeUsers = 0;
+      let postsPerMin = 0;
+      let timeElapsed = 0;
+      
+      // Reset UI
+      document.getElementById('startSimulation').disabled = true;
+      document.getElementById('stopSimulation').disabled = false;
+      document.getElementById('activityFeed').innerHTML = 
+        '<div class="list-group list-group-flush"></div>';
+      
+      // Start simulation loop
+      simulationInterval = setInterval(function() {
+        timeElapsed++;
+        
+        // Update random active users
+        activeUsers = randomUsers ? 
+          Math.floor(userCount * (0.3 + Math.random() * 0.7)) : 
+          userCount;
+          
+        // Generate posts
+        postsPerMin = Math.floor(postRate * (0.5 + Math.random()));
+        totalPosts += postsPerMin;
+        
+        // Update stats
+        document.getElementById('activeUsers').textContent = activeUsers;
+        document.getElementById('postsPerMin').textContent = postsPerMin;
+        document.getElementById('totalPosts').textContent = totalPosts;
+        
+        // Update system impact
+        updateSystemImpact(activeUsers, postsPerMin);
+        
+        // Update chart
+        update
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h1 class="mb-4"><i class="fas fa-users me-2"></i>Feed Load Simulator</h1>
+  
+  <div class="row g-4 mb-4">
+    <!-- Simulation Controls -->
+    <div class="col-md-5">
+      <div class="card h-100">
+        <div class="card-header bg-primary text-white">
+          <i class="fas fa-tachometer-alt me-2"></i>Load Parameters
+        </div>
+        <div class="card-body">
+          <form id="simulationForm">
+            <div class="mb-3">
+              <label class="form-label">Number of Users</label>
+              <input type="number" class="form-control" id="userCount" min="1" max="1000" value="50">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Posts per Minute</label>
+              <input type="number" class="form-control" id="postRate" min="1" max="100" value="10">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Post Length (chars)</label>
+              <input type="number" class="form-control" id="postLength" min="10" max="500" value="120">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Duration (minutes)</label>
+              <input type="number" class="form-control" id="duration" min="1" max="60" value="5">
+            </div>
+            <div class="mb-3 form-check">
+              <input type="checkbox" class="form-check-input" id="randomUsers" checked>
+              <label class="form-check-label">Randomize user activity</label>
+            </div>
+            <div class="d-grid gap-2">
+              <button type="button" class="btn btn-primary" id="startSimulation">
+                <i class="fas fa-play me-2"></i>Start Simulation
+              </button>
+              <button type="button" class="btn btn-danger" id="stopSimulation" disabled>
+                <i class="fas fa-stop me-2"></i>Stop Simulation
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Stats -->
+    <div class="col-md-7">
+      <div class="card h-100">
+        <div class="card-header bg-success text-white">
+          <i class="fas fa-chart-bar me-2"></i>Live Statistics
+        </div>
+        <div class="card-body">
+          <div class="row text-center mb-3">
+            <div class="col-md-4">
+              <h5>Active Users</h5>
+              <h2 id="activeUsers" class="text-primary">0</h2>
+            </div>
+            <div class="col-md-4">
+              <h5>Posts/Min</h5>
+              <h2 id="postsPerMin" class="text-info">0</h2>
+            </div>
+            <div class="col-md-4">
+              <h5>Total Posts</h5>
+              <h2 id="totalPosts" class="text-success">0</h2>
+            </div>
+          </div>
+          <div class="chart-container" style="height: 200px;">
+            <canvas id="loadChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Impact -->
+  <div class="card mb-4">
+    <div class="card-header bg-warning text-dark">
+      <i class="fas fa-server me-2"></i>System Impact
+    </div>
+    <div class="card-body">
+      <div class="row text-center">
+        <div class="col-md-3">
+          <h5>CPU Usage</h5>
+          <div class="progress">
+            <div id="cpuUsage" class="progress-bar bg-danger" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Memory Usage</h5>
+          <div class="progress">
+            <div id="memUsage" class="progress-bar bg-info" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Database Load</h5>
+          <div class="progress">
+            <div id="dbLoad" class="progress-bar bg-warning" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Network Traffic</h5>
+          <div class="progress">
+            <div id="netTraffic" class="progress-bar bg-success" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity Feed -->
+  <div class="card">
+    <div class="card-header bg-dark text-white">
+      <i class="fas fa-comments me-2"></i>Simulated Activity Feed
+    </div>
+    <div class="card-body p-0">
+      <div id="activityFeed" style="height: 300px; overflow-y: auto;">
+        <div class="list-group list-group-flush">
+          <div class="list-group-item text-muted text-center py-5">
+            Simulation will display live feed activity here
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    let simulationInterval;
+    let simChart;
+    const samplePosts = [
+      "Just checked the energy stats - looking good!",
+      "Our solar panels are generating 4.2kW right now",
+      "Switched to battery power during peak hours",
+      "The new ML model predictions are accurate",
+      "Wind turbine output is lower than expected today",
+      "Reduced server load by 15% with optimizations",
+      "Data center temperature stable at 24°C",
+      "Implemented new cooling strategy - working well",
+      "Energy consumption trending downward this week",
+      "The green meter shows excellent efficiency"
+    ];
+
+    // Initialize chart
+    const ctx = document.getElementById('loadChart').getContext('2d');
+    simChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: Array.from({length: 10}, (_, i) => i),
+        datasets: [{
+          label: 'Active Users',
+          data: [],
+          borderColor: 'rgba(13, 110, 253, 1)',
+          backgroundColor: 'rgba(13, 110, 253, 0.1)',
+          tension: 0.4
+        }, {
+          label: 'Posts/Min',
+          data: [],
+          borderColor: 'rgba(40, 167, 69, 1)',
+          backgroundColor: 'rgba(40, 167, 69, 0.1)',
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+    // Start simulation
+    document.getElementById('startSimulation').addEventListener('click', function() {
+      const userCount = parseInt(document.getElementById('userCount').value);
+      const postRate = parseInt(document.getElementById('postRate').value);
+      const duration = parseInt(document.getElementById('duration').value);
+      const postLength = parseInt(document.getElementById('postLength').value);
+      const randomUsers = document.getElementById('randomUsers').checked;
+      
+      let totalPosts = 0;
+      let activeUsers = 0;
+      let postsPerMin = 0;
+      let timeElapsed = 0;
+      
+      // Reset UI
+      document.getElementById('startSimulation').disabled = true;
+      document.getElementById('stopSimulation').disabled = false;
+      document.getElementById('activityFeed').innerHTML = 
+        '<div class="list-group list-group-flush"></div>';
+      
+      // Start simulation loop
+      simulationInterval = setInterval(function() {
+        timeElapsed++;
+        
+        // Update random active users
+        activeUsers = randomUsers ? 
+          Math.floor(userCount * (0.3 + Math.random() * 0.7)) : 
+          userCount;
+          
+        // Generate posts
+        postsPerMin = Math.floor(postRate * (0.5 + Math.random()));
+        totalPosts += postsPerMin;
+        
+        // Update stats
+        document.getElementById('activeUsers').textContent = activeUsers;
+        document.getElementById('postsPerMin').textContent = postsPerMin;
+        document.getElementById('totalPosts').textContent = totalPosts;
+        
+        // Update system impact
+        updateSystemImpact(activeUsers, postsPerMin);
+        
+        // Update chart
+        updateChartData(activeUsers, postsPerMin);
+        
+        // Generate feed activity
+        generateFeedActivity(postsPerMin, postLength);
+        
+        // Check if simulation should end
+        if (timeElapsed >= duration) {
+          clear
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h1 class="mb-4"><i class="fas fa-users me-2"></i>Workload Simulator</h1>
+  
+  <div class="row g-4 mb-4">
+    <!-- Simulation Controls -->
+    <div class="col-md-5">
+      <div class="card h-100">
+        <div class="card-header bg-primary text-white">
+          <i class="fas fa-tachometer-alt me-2"></i>Load Parameters
+        </div>
+        <div class="card-body">
+          <form id="simulationForm">
+            <div class="mb-3">
+              <label class="form-label">Number of Users</label>
+              <input type="number" class="form-control" id="userCount" min="1" max="1000" value="50">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Posts per Minute</label>
+              <input type="number" class="form-control" id="postRate" min="1" max="100" value="10">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Post Length (chars)</label>
+              <input type="number" class="form-control" id="postLength" min="10" max="500" value="120">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Duration (minutes)</label>
+              <input type="number" class="form-control" id="duration" min="1" max="60" value="5">
+            </div>
+            <div class="mb-3 form-check">
+              <input type="checkbox" class="form-check-input" id="randomUsers" checked>
+              <label class="form-check-label">Randomize user activity</label>
+            </div>
+            <div class="d-grid gap-2">
+              <button type="button" class="btn btn-primary" id="startSimulation">
+                <i class="fas fa-play me-2"></i>Start Simulation
+              </button>
+              <button type="button" class="btn btn-danger" id="stopSimulation" disabled>
+                <i class="fas fa-stop me-2"></i>Stop Simulation
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Stats -->
+    <div class="col-md-7">
+      <div class="card h-100">
+        <div class="card-header bg-success text-white">
+          <i class="fas fa-chart-bar me-2"></i>Live Statistics
+        </div>
+        <div class="card-body">
+          <div class="row text-center mb-3">
+            <div class="col-md-4">
+              <h5>Active Users</h5>
+              <h2 id="activeUsers" class="text-primary">0</h2>
+            </div>
+            <div class="col-md-4">
+              <h5>Posts/Min</h5>
+              <h2 id="postsPerMin" class="text-info">0</h2>
+            </div>
+            <div class="col-md-4">
+              <h5>Total Posts</h5>
+              <h2 id="totalPosts" class="text-success">0</h2>
+            </div>
+          </div>
+          <div class="chart-container" style="height: 200px;">
+            <canvas id="loadChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Impact -->
+  <div class="card mb-4">
+    <div class="card-header bg-warning text-dark">
+      <i class="fas fa-server me-2"></i>System Impact
+    </div>
+    <div class="card-body">
+      <div class="row text-center">
+        <div class="col-md-3">
+          <h5>CPU Usage</h5>
+          <div class="progress">
+            <div id="cpuUsage" class="progress-bar bg-danger" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Memory Usage</h5>
+          <div class="progress">
+            <div id="memUsage" class="progress-bar bg-info" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Database Load</h5>
+          <div class="progress">
+            <div id="dbLoad" class="progress-bar bg-warning" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Network Traffic</h5>
+          <div class="progress">
+            <div id="netTraffic" class="progress-bar bg-success" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity Feed -->
+  <div class="card">
+    <div class="card-header bg-dark text-white">
+      <i class="fas fa-comments me-2"></i>Simulated Activity Feed
+    </div>
+    <div class="card-body p-0">
+      <div id="activityFeed" style="height: 300px; overflow-y: auto;">
+        <div class="list-group list-group-flush">
+          <div class="list-group-item text-muted text-center py-5">
+            Simulation will display live feed activity here
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    let simulationInterval;
+    let simChart;
+    const samplePosts = [
+      "Just checked the energy stats - looking good!",
+      "Our solar panels are generating 4.2kW right now",
+      "Switched to battery power during peak hours",
+      "The new ML model predictions are accurate",
+      "Wind turbine output is lower than expected today",
+      "Reduced server load by 15% with optimizations",
+      "Data center temperature stable at 24°C",
+      "Implemented new cooling strategy - working well",
+      "Energy consumption trending downward this week",
+      "The green meter shows excellent efficiency"
+    ];
+
+    // Initialize chart
+    const ctx = document.getElementById('loadChart').getContext('2d');
+    simChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: Array.from({length: 10}, (_, i) => i),
+        datasets: [{
+          label: 'Active Users',
+          data: [],
+          borderColor: 'rgba(13, 110, 253, 1)',
+          backgroundColor: 'rgba(13, 110, 253, 0.1)',
+          tension: 0.4
+        }, {
+          label: 'Posts/Min',
+          data: [],
+          borderColor: 'rgba(40, 167, 69, 1)',
+          backgroundColor: 'rgba(40, 167, 69, 0.1)',
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+    // Start simulation
+    document.getElementById('startSimulation').addEventListener('click', function() {
+      const userCount = parseInt(document.getElementById('userCount').value);
+      const postRate = parseInt(document.getElementById('postRate').value);
+      const duration = parseInt(document.getElementById('duration').value);
+      const postLength = parseInt(document.getElementById('postLength').value);
+      const randomUsers = document.getElementById('randomUsers').checked;
+      
+      let totalPosts = 0;
+      let activeUsers = 0;
+      let postsPerMin = 0;
+      let timeElapsed = 0;
+      
+      // Reset UI
+      document.getElementById('startSimulation').disabled = true;
+      document.getElementById('stopSimulation').disabled = false;
+      document.getElementById('activityFeed').innerHTML = 
+        '<div class="list-group list-group-flush"></div>';
+      
+      // Start simulation loop
+      simulationInterval = setInterval(function() {
+        timeElapsed++;
+        
+        // Update random active users
+        activeUsers = randomUsers ? 
+          Math.floor(userCount * (0.3 + Math.random() * 0.7)) : 
+          userCount;
+          
+        // Generate posts
+        postsPerMin = Math.floor(postRate * (0.5 + Math.random()));
+        totalPosts += postsPerMin;
+        
+        // Update stats
+        document.getElementById('activeUsers').textContent = activeUsers;
+        document.getElementById('postsPerMin').textContent = postsPerMin;
+        document.getElementById('totalPosts').textContent = totalPosts;
+        
+        // Update system impact
+        updateSystemImpact(activeUsers, postsPerMin);
+        
+        // Update chart
+        update
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h1 class="mb-4"><i class="fas fa-users me-2"></i>Feed Load Simulator</h1>
+  
+  <div class="row g-4 mb-4">
+    <!-- Simulation Controls -->
+    <div class="col-md-5">
+      <div class="card h-100">
+        <div class="card-header bg-primary text-white">
+          <i class="fas fa-tachometer-alt me-2"></i>Load Parameters
+        </div>
+        <div class="card-body">
+          <form id="simulationForm">
+            <div class="mb-3">
+              <label class="form-label">Number of Users</label>
+              <input type="number" class="form-control" id="userCount" min="1" max="1000" value="50">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Posts per Minute</label>
+              <input type="number" class="form-control" id="postRate" min="1" max="100" value="10">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Post Length (chars)</label>
+              <input type="number" class="form-control" id="postLength" min="10" max="500" value="120">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Duration (minutes)</label>
+              <input type="number" class="form-control" id="duration" min="1" max="60" value="5">
+            </div>
+            <div class="mb-3 form-check">
+              <input type="checkbox" class="form-check-input" id="randomUsers" checked>
+              <label class="form-check-label">Randomize user activity</label>
+            </div>
+            <div class="d-grid gap-2">
+              <button type="button" class="btn btn-primary" id="startSimulation">
+                <i class="fas fa-play me-2"></i>Start Simulation
+              </button>
+              <button type="button" class="btn btn-danger" id="stopSimulation" disabled>
+                <i class="fas fa-stop me-2"></i>Stop Simulation
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Stats -->
+    <div class="col-md-7">
+      <div class="card h-100">
+        <div class="card-header bg-success text-white">
+          <i class="fas fa-chart-bar me-2"></i>Live Statistics
+        </div>
+        <div class="card-body">
+          <div class="row text-center mb-3">
+            <div class="col-md-4">
+              <h5>Active Users</h5>
+              <h2 id="activeUsers" class="text-primary">0</h2>
+            </div>
+            <div class="col-md-4">
+              <h5>Posts/Min</h5>
+              <h2 id="postsPerMin" class="text-info">0</h2>
+            </div>
+            <div class="col-md-4">
+              <h5>Total Posts</h5>
+              <h2 id="totalPosts" class="text-success">0</h2>
+            </div>
+          </div>
+          <div class="chart-container" style="height: 200px;">
+            <canvas id="loadChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Impact -->
+  <div class="card mb-4">
+    <div class="card-header bg-warning text-dark">
+      <i class="fas fa-server me-2"></i>System Impact
+    </div>
+    <div class="card-body">
+      <div class="row text-center">
+        <div class="col-md-3">
+          <h5>CPU Usage</h5>
+          <div class="progress">
+            <div id="cpuUsage" class="progress-bar bg-danger" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Memory Usage</h5>
+          <div class="progress">
+            <div id="memUsage" class="progress-bar bg-info" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Database Load</h5>
+          <div class="progress">
+            <div id="dbLoad" class="progress-bar bg-warning" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Network Traffic</h5>
+          <div class="progress">
+            <div id="netTraffic" class="progress-bar bg-success" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity Feed -->
+  <div class="card">
+    <div class="card-header bg-dark text-white">
+      <i class="fas fa-comments me-2"></i>Simulated Activity Feed
+    </div>
+    <div class="card-body p-0">
+      <div id="activityFeed" style="height: 300px; overflow-y: auto;">
+        <div class="list-group list-group-flush">
+          <div class="list-group-item text-muted text-center py-5">
+            Simulation will display live feed activity here
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    let simulationInterval;
+    let simChart;
+    const samplePosts = [
+      "Just checked the energy stats - looking good!",
+      "Our solar panels are generating 4.2kW right now",
+      "Switched to battery power during peak hours",
+      "The new ML model predictions are accurate",
+      "Wind turbine output is lower than expected today",
+      "Reduced server load by 15% with optimizations",
+      "Data center temperature stable at 24°C",
+      "Implemented new cooling strategy - working well",
+      "Energy consumption trending downward this week",
+      "The green meter shows excellent efficiency"
+    ];
+
+    // Initialize chart
+    const ctx = document.getElementById('loadChart').getContext('2d');
+    simChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: Array.from({length: 10}, (_, i) => i),
+        datasets: [{
+          label: 'Active Users',
+          data: [],
+          borderColor: 'rgba(13, 110, 253, 1)',
+          backgroundColor: 'rgba(13, 110, 253, 0.1)',
+          tension: 0.4
+        }, {
+          label: 'Posts/Min',
+          data: [],
+          borderColor: 'rgba(40, 167, 69, 1)',
+          backgroundColor: 'rgba(40, 167, 69, 0.1)',
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+    // Start simulation
+    document.getElementById('startSimulation').addEventListener('click', function() {
+      const userCount = parseInt(document.getElementById('userCount').value);
+      const postRate = parseInt(document.getElementById('postRate').value);
+      const duration = parseInt(document.getElementById('duration').value);
+      const postLength = parseInt(document.getElementById('postLength').value);
+      const randomUsers = document.getElementById('randomUsers').checked;
+      
+      let totalPosts = 0;
+      let activeUsers = 0;
+      let postsPerMin = 0;
+      let timeElapsed = 0;
+      
+      // Reset UI
+      document.getElementById('startSimulation').disabled = true;
+      document.getElementById('stopSimulation').disabled = false;
+      document.getElementById('activityFeed').innerHTML = 
+        '<div class="list-group list-group-flush"></div>';
+      
+      // Start simulation loop
+      simulationInterval = setInterval(function() {
+        timeElapsed++;
+        
+        // Update random active users
+        activeUsers = randomUsers ? 
+          Math.floor(userCount * (0.3 + Math.random() * 0.7)) : 
+          userCount;
+          
+        // Generate posts
+        postsPerMin = Math.floor(postRate * (0.5 + Math.random()));
+        totalPosts += postsPerMin;
+        
+        // Update stats
+        document.getElementById('activeUsers').textContent = activeUsers;
+        document.getElementById('postsPerMin').textContent = postsPerMin;
+        document.getElementById('totalPosts').textContent = totalPosts;
+        
+        // Update system impact
+        updateSystemImpact(activeUsers, postsPerMin);
+        
+        // Update chart
+        updateChartData(activeUsers, postsPerMin);
+        
+        // Generate feed activity
+        generateFeedActivity(postsPerMin, postLength);
+        
+        // Check if simulation should end
+        if (timeElapsed >= duration) {
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h1 class="mb-4"><i class="fas fa-users me-2"></i>Workload Simulator</h1>
+  
+  <div class="row g-4 mb-4">
+    <!-- Simulation Controls -->
+    <div class="col-md-5">
+      <div class="card h-100">
+        <div class="card-header bg-primary text-white">
+          <i class="fas fa-tachometer-alt me-2"></i>Load Parameters
+        </div>
+        <div class="card-body">
+          <form id="simulationForm">
+            <div class="mb-3">
+              <label class="form-label">Number of Users</label>
+              <input type="number" class="form-control" id="userCount" min="1" max="1000" value="50">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Posts per Minute</label>
+              <input type="number" class="form-control" id="postRate" min="1" max="100" value="10">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Post Length (chars)</label>
+              <input type="number" class="form-control" id="postLength" min="10" max="500" value="120">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Duration (minutes)</label>
+              <input type="number" class="form-control" id="duration" min="1" max="60" value="5">
+            </div>
+            <div class="mb-3 form-check">
+              <input type="checkbox" class="form-check-input" id="randomUsers" checked>
+              <label class="form-check-label">Randomize user activity</label>
+            </div>
+            <div class="d-grid gap-2">
+              <button type="button" class="btn btn-primary" id="startSimulation">
+                <i class="fas fa-play me-2"></i>Start Simulation
+              </button>
+              <button type="button" class="btn btn-danger" id="stopSimulation" disabled>
+                <i class="fas fa-stop me-2"></i>Stop Simulation
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Stats -->
+    <div class="col-md-7">
+      <div class="card h-100">
+        <div class="card-header bg-success text-white">
+          <i class="fas fa-chart-bar me-2"></i>Live Statistics
+        </div>
+        <div class="card-body">
+          <div class="row text-center mb-3">
+            <div class="col-md-4">
+              <h5>Active Users</h5>
+              <h2 id="activeUsers" class="text-primary">0</h2>
+            </div>
+            <div class="col-md-4">
+              <h5>Posts/Min</h5>
+              <h2 id="postsPerMin" class="text-info">0</h2>
+            </div>
+            <div class="col-md-4">
+              <h5>Total Posts</h5>
+              <h2 id="totalPosts" class="text-success">0</h2>
+            </div>
+          </div>
+          <div class="chart-container" style="height: 200px;">
+            <canvas id="loadChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Impact -->
+  <div class="card mb-4">
+    <div class="card-header bg-warning text-dark">
+      <i class="fas fa-server me-2"></i>System Impact
+    </div>
+    <div class="card-body">
+      <div class="row text-center">
+        <div class="col-md-3">
+          <h5>CPU Usage</h5>
+          <div class="progress">
+            <div id="cpuUsage" class="progress-bar bg-danger" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Memory Usage</h5>
+          <div class="progress">
+            <div id="memUsage" class="progress-bar bg-info" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Database Load</h5>
+          <div class="progress">
+            <div id="dbLoad" class="progress-bar bg-warning" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <h5>Network Traffic</h5>
+          <div class="progress">
+            <div id="netTraffic" class="progress-bar bg-success" role="progressbar" style="width: 0%">0%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity Feed -->
+  <div class="card">
+    <div class="card-header bg-dark text-white">
+      <i class="fas fa-comments me-2"></i>Simulated Activity Feed
+    </div>
+    <div class="card-body p-0">
+      <div id="activityFeed" style="height: 300px; overflow-y: auto;">
+        <div class="list-group list-group-flush">
+          <div class="list-group-item text-muted text-center py-5">
+            Simulation will display live feed activity here
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    let simulationInterval;
+    let simChart;
+    const samplePosts = [
+      "Just checked the energy stats - looking good!",
+      "Our solar panels are generating 4.2kW right now",
+      "Switched to battery power during peak hours",
+      "The new ML model predictions are accurate",
+      "Wind turbine output is lower than expected today",
+      "Reduced server load by 15% with optimizations",
+      "Data center temperature stable at 24°C",
+      "Implemented new cooling strategy - working well",
+      "Energy consumption trending downward this week",
+      "The green meter shows excellent efficiency"
+    ];
+
+    // Initialize chart
+    const ctx = document.getElementById('loadChart').getContext('2d');
+    simChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: Array.from({length: 10}, (_, i) => i),
+        datasets: [{
+          label: 'Active Users',
+          data: [],
+          borderColor: 'rgba(13, 110, 253, 1)',
+          backgroundColor: 'rgba(13, 110, 253, 0.1)',
+          tension: 0.4
+        }, {
+          label: 'Posts/Min',
+          data: [],
+          borderColor: 'rgba(40, 167, 69, 1)',
+          backgroundColor: 'rgba(40, 167, 69, 0.1)',
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+    // Start simulation
+    document.getElementById('startSimulation').addEventListener('click', function() {
+      const userCount = parseInt(document.getElementById('userCount').value);
+      const postRate = parseInt(document.getElementById('postRate').value);
+      const duration = parseInt(document.getElementById('duration').value);
+      const postLength = parseInt(document.getElementById('postLength').value);
+      const randomUsers = document.getElementById('randomUsers').checked;
+      
+      let totalPosts = 0;
+      let activeUsers = 0;
+      let postsPerMin = 0;
+      let timeElapsed = 0;
+      
+      // Reset UI
+      document.getElementById('startSimulation').disabled = true;
+      document.getElementById('stopSimulation').disabled = false;
+      document.getElementById('activityFeed').innerHTML = 
+        '<div class="list-group list-group-flush"></div>';
+      
+      // Start simulation loop
+      simulationInterval = setInterval(function() {
+        timeElapsed++;
+        
+        // Update random active users
+        activeUsers = randomUsers ? 
+          Math.floor(userCount * (0.3 + Math.random() * 0.7)) : 
+          userCount;
+          
+        // Generate posts
+        postsPerMin = Math.floor(postRate * (0.5 + Math.random()));
+        totalPosts += postsPerMin;
+        
+        // Update stats
+        document.getElementById('activeUsers').textContent = activeUsers;
+        document.getElementById('postsPerMin').textContent = postsPerMin;
+        document.getElementById('totalPosts').textContent = totalPosts;
+        
+        // Update system impact
+        updateSystemImpact(activeUsers, postsPerMin);
+        
+        // Update chart
+        update
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h1 class="mb-4"><i class="fas fa-project-diagram me-2"></i>Data Pipeline Workflow</h1>
+  
+  <div class="row g-4 mb-4">
+    <!-- Simulation Form -->
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header bg-primary text-white">
+          <i class="fas fa-sliders-h me-2"></i>Simulation Controls
+        </div>
+        <div class="card-body">
+          <form id="simulationForm">
+            <div class="mb-3">
+              <label class="form-label">Temperature (°C)</label>
+              <input type="number" class="form-control" id="tempInput" step="0.1" value="24.5">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Humidity (%)</label>
+              <input type="number" class="form-control" id="humidityInput" min="0" max="100" value="45">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Wind Speed (m/s)</label>
+              <input type="number" class="form-control" id="windInput" step="0.1" value="3.2">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Solar Irradiance (W/m²)</label>
+              <input type="number" class="form-control" id="solarInput" value="850">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Timestamp</label>
+              <input type="datetime-local" class="form-control" id="timeInput">
+            </div>
+            <div class="d-grid">
+              <button type="button" class="btn btn-primary" id="runSimulation">
+                <i class="fas fa-play me-2"></i>Run Simulation
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results Display -->
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header bg-success text-white">
+          <i class="fas fa-chart-line me-2"></i>Simulation Results
+        </div>
+        <div class="card-body">
+          <div id="resultsContainer" class="text-center py-4">
+            <p class="text-muted">Run a simulation to see results</p>
+          </div>
+          <div class="chart-container" style="height: 200px;">
+            <canvas id="simulationChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Debug View -->
+  <div class="card mb-4">
+    <div class="card-header bg-secondary text-white">
+      <i class="fas fa-bug me-2"></i>Debug View
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <h5>Input Data</h5>
+          <pre id="inputData" class="bg-light p-3 rounded">No simulation data</pre>
+        </div>
+        <div class="col-md-6">
+          <h5>Model Output</h5>
+          <pre id="modelOutput" class="bg-light p-3 rounded">No model output</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Updates -->
+  <div class="card">
+    <div class="card-header bg-info text-white">
+      <i class="fas fa-exchange-alt me-2"></i>System Updates
+    </div>
+    <div class="card-body">
+      <ul class="list-group" id="systemUpdates">
+        <li class="list-group-item">No updates triggered yet</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Set default timestamp to now
+    const now = new Date();
+    document.getElementById('timeInput').value = now.toISOString().slice(0, 16);
+
+    // Simulation button handler
+    document.getElementById('runSimulation').addEventListener('click', function() {
+      // Get input values
+      const inputs = {
+        temperature: parseFloat(document.getElementById('tempInput').value),
+        humidity: parseFloat(document.getElementById('humidityInput').value),
+        wind_speed: parseFloat(document.getElementById('windInput').value),
+        solar_irradiance: parseInt(document.getElementById('solarInput').value),
+        timestamp: document.getElementById('timeInput').value
+      };
+
+      // Display raw input
+      document.getElementById('inputData').textContent = JSON.stringify(inputs, null, 2);
+
+      // Simulate ML prediction (would be API call in real app)
+      const prediction = simulatePrediction(inputs);
+
+      // Display results
+      showResults(prediction);
+      updateSystemLogs(prediction);
+      updateChart(prediction);
+    });
+
+    function simulatePrediction(inputs) {
+      // Mock prediction logic
+      const consumption = (inputs.temperature * 0.1) + 
+                         (inputs.humidity * 0.05) + 
+                         (inputs.solar_irradiance * 0.001) + 
+                         (Math.random() * 0.5);
+      
+      let source;
+      if (inputs.solar_irradiance > 800) {
+        source = "Solar";
+      } else if (inputs.wind_speed > 5) {
+        source = "Wind";
+      } else {
+        source = "Battery";
+      }
+
+      return {
+        predicted_consumption: consumption.toFixed(2),
+        recommended_source: source,
+        confidence: (Math.random() * 20 + 80).toFixed(1),
+        features: {
+          temp_feature: (inputs.temperature * 0.1).toFixed(2),
+          humidity_feature: (inputs.humidity * 0.05).toFixed(2),
+          solar_feature: (inputs.solar_irradiance * 0.001).toFixed(3)
+        }
+      };
+    }
+
+    function showResults(prediction) {
+      const html = `
+        <h3>Predicted Consumption: <span class="text-primary">${prediction.predicted_consumption} kWh</span></h3>
+        <h4>Recommended Source: 
+          <span class="badge ${getSourceBadgeClass(prediction.recommended_source)}">
+            ${prediction.recommended_source}
+          </span>
+        </h4>
+        <p>Confidence: ${prediction.confidence}%</p>
+      `;
+      document.getElementById('resultsContainer').innerHTML = html;
+      document.getElementById('modelOutput').textContent = JSON.stringify(prediction, null, 2);
+    }
+
+    function getSourceBadgeClass(source) {
+      return {
+        'Solar': 'bg-warning',
+        'Wind': 'bg-info',
+        'Battery': 'bg-success'
+      }[source] || 'bg-secondary';
+    }
+
+    function updateSystemLogs(prediction) {
+      const now = new Date().toLocaleTimeString();
+      const logs = [
+        `[${now}] Data ingested into pipeline`,
+        `[${now}] ML prediction completed (${prediction.confidence}% confidence)`,
+        `[${now}] Recommended ${prediction.recommended_source} power`,
+        `[${now}] Dashboard updated with new prediction`
+      ];
+      
+      const logHtml = logs.map(log => 
+        `<li class="list-group-item">${log}</li>`
+      ).join('');
+      document.getElementById('systemUpdates').innerHTML = logHtml;
+    }
+
+    function updateChart(prediction) {
+      const ctx = document.getElementById('simulationChart').getContext('2d');
+      
+      if (window.simChart) {
+        window.simChart.destroy();
+      }
+      
+      window.simChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Consumption', 'Confidence'],
+          datasets: [{
+            label: 'Prediction Results',
+            data: [prediction.predicted_consumption, prediction.confidence],
+            backgroundColor: [
+              'rgba(54, 162, 235, 0.7)',
+              'rgba(75, 192, 192, 0.7)'
+            ]
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+  });
+</script>
 {% endblock %}
