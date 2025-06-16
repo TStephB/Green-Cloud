@@ -74,41 +74,6 @@
     </div>
   </div>
 
-  <!-- System Impact -->
-  <div class="card mb-4">
-    <div class="card-header bg-warning text-dark">
-      <i class="fas fa-server me-2"></i>System Impact
-    </div>
-    <div class="card-body">
-      <div class="row text-center">
-        <div class="col-md-3">
-          <h5>CPU Usage</h5>
-          <div class="progress">
-            <div id="cpuUsage" class="progress-bar bg-danger" role="progressbar" style="width: 0%">0%</div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <h5>Memory Usage</h5>
-          <div class="progress">
-            <div id="memUsage" class="progress-bar bg-info" role="progressbar" style="width: 0%">0%</div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <h5>Database Load</h5>
-          <div class="progress">
-            <div id="dbLoad" class="progress-bar bg-warning" role="progressbar" style="width: 0%">0%</div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <h5>Network Traffic</h5>
-          <div class="progress">
-            <div id="netTraffic" class="progress-bar bg-success" role="progressbar" style="width: 0%">0%</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Activity Feed -->
   <div class="card">
     <div class="card-header bg-dark text-white">
@@ -130,168 +95,123 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
+    // === only changed this block ===
+    const START_URL  = "{{ url_for('proxy_start') }}";
+    const STATUS_URL = "{{ url_for('proxy_status') }}";
+    const STOP_URL   = "{{ url_for('proxy_stop') }}";
     let simulationInterval;
-    let simChart;
-    const samplePosts = [
-      "Just checked the energy stats - looking good!",
-      "Our solar panels are generating 4.2kW right now",
-      "Switched to battery power during peak hours",
-      "The new ML model predictions are accurate",
-      "Wind turbine output is lower than expected today",
-      "Reduced server load by 15% with optimizations",
-      "Data center temperature stable at 24°C",
-      "Implemented new cooling strategy - working well",
-      "Energy consumption trending downward this week",
-      "The green meter shows excellent efficiency"
-    ];
-
-    // Initialize chart
+    // initialize Chart.js as before...
     const ctx = document.getElementById('loadChart').getContext('2d');
-    simChart = new Chart(ctx, {
+    const simChart = new Chart(ctx, {
       type: 'line',
       data: {
         labels: Array.from({length: 10}, (_, i) => i),
-        datasets: [{
-          label: 'Active Users',
-          data: [],
-          borderColor: 'rgba(13, 110, 253, 1)',
-          backgroundColor: 'rgba(13, 110, 253, 0.1)',
-          tension: 0.4
-        }, {
-          label: 'Posts/Min',
-          data: [],
-          borderColor: 'rgba(40, 167, 69, 1)',
-          backgroundColor: 'rgba(40, 167, 69, 0.1)',
-          tension: 0.4
-        }]
+        datasets: [
+          { label: 'Active Users', data: [], tension: 0.4 },
+          { label: 'Posts/Min',    data: [], tension: 0.4 }
+        ]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: { beginAtZero: true }
-        }
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+    });
+
+    function safeJson(res) {
+      if (!res.ok) {
+        return res.json?.().catch(() => res.text())
+          .then(err => { throw new Error(err.error || err); });
       }
-    });
-
-    // Stop simulation handler
-    document.getElementById('stopSimulation').addEventListener('click', function() {
-      clearInterval(simulationInterval);
-      document.getElementById('startSimulation').disabled = false;
-      document.getElementById('stopSimulation').disabled = true;
-    });
-
-    function updateSystemImpact(activeUsers, postsPerMin) {
-      // Calculate system impact percentages
-      const cpuUsage = Math.min(100, Math.floor(activeUsers * 0.2 + postsPerMin * 0.5));
-      const memUsage = Math.min(100, Math.floor(activeUsers * 0.15 + postsPerMin * 0.3));
-      const dbLoad = Math.min(100, Math.floor(activeUsers * 0.1 + postsPerMin * 0.7));
-      const netTraffic = Math.min(100, Math.floor(activeUsers * 0.3 + postsPerMin * 0.4));
-
-      // Update progress bars
-      document.getElementById('cpuUsage').style.width = `${cpuUsage}%`;
-      document.getElementById('cpuUsage').textContent = `${cpuUsage}%`;
-      document.getElementById('memUsage').style.width = `${memUsage}%`;
-      document.getElementById('memUsage').textContent = `${memUsage}%`;
-      document.getElementById('dbLoad').style.width = `${dbLoad}%`;
-      document.getElementById('dbLoad').textContent = `${dbLoad}%`;
-      document.getElementById('netTraffic').style.width = `${netTraffic}%`;
-      document.getElementById('netTraffic').textContent = `${netTraffic}%`;
+      return res.json();
     }
 
     function updateChartData(activeUsers, postsPerMin) {
-      // Shift data left if we have more than 10 points
       if (simChart.data.labels.length >= 10) {
         simChart.data.labels.shift();
         simChart.data.datasets[0].data.shift();
         simChart.data.datasets[1].data.shift();
       }
-
-      // Add new data point
       simChart.data.labels.push(simChart.data.labels.length);
       simChart.data.datasets[0].data.push(activeUsers);
       simChart.data.datasets[1].data.push(postsPerMin);
-
-      // Update chart
       simChart.update();
     }
 
-    function generateFeedActivity(postsPerMin, postLength) {
-      const feedContainer = document.querySelector('#activityFeed .list-group-flush');
-      
-      // Generate sample posts
-      for (let i = 0; i < postsPerMin; i++) {
-        const randomPost = samplePosts[Math.floor(Math.random() * samplePosts.length)];
-        const randomUser = `user${Math.floor(Math.random() * 1000)}`;
-        
-        const postElement = document.createElement('div');
-        postElement.className = 'list-group-item';
-        postElement.innerHTML = `
-          <div class="d-flex w-100 justify-content-between">
-            <h6 class="mb-1">${randomUser}</h6>
-            <small class="text-muted">Just now</small>
-          </div>
-          <p class="mb-1">${randomPost}</p>
-        `;
-        
-        feedContainer.prepend(postElement);
-      }
-    }
+    function pollStatus() {
+      fetch(STATUS_URL)
+        .then(safeJson)
+        .then(status => {
+          if (!status.running) {
+            clearInterval(simulationInterval);
+            document.getElementById('startSimulation').disabled = false;
+            document.getElementById('stopSimulation').disabled  = true;
+            return;
+          }
+          document.getElementById('activeUsers').textContent = status.active_users;
+          document.getElementById('postsPerMin').textContent = status.posts_per_min;
+          document.getElementById('totalPosts').textContent = status.total_posts;
+          updateChartData(status.active_users, status.posts_per_min);
 
-    // Start simulation
-    document.getElementById('startSimulation').addEventListener('click', function() {
-      const userCount = parseInt(document.getElementById('userCount').value);
-      const postRate = parseInt(document.getElementById('postRate').value);
-      const duration = parseInt(document.getElementById('duration').value);
-      const postLength = parseInt(document.getElementById('postLength').value);
-      const randomUsers = document.getElementById('randomUsers').checked;
-      
-      let totalPosts = 0;
-      let activeUsers = 0;
-      let postsPerMin = 0;
-      let timeElapsed = 0;
-      
-      // Reset UI
-      document.getElementById('startSimulation').disabled = true;
-      document.getElementById('stopSimulation').disabled = false;
-      document.getElementById('activityFeed').innerHTML = 
-        '<div class="list-group list-group-flush"></div>';
-      
-      // Start simulation loop
-      simulationInterval = setInterval(function() {
-        timeElapsed++;
-        
-        // Update random active users
-        activeUsers = randomUsers ? 
-          Math.floor(userCount * (0.3 + Math.random() * 0.7)) : 
-          userCount;
-          
-        // Generate posts
-        postsPerMin = Math.floor(postRate * (0.5 + Math.random()));
-        totalPosts += postsPerMin;
-        
-        // Update stats
-        document.getElementById('activeUsers').textContent = activeUsers;
-        document.getElementById('postsPerMin').textContent = postsPerMin;
-        document.getElementById('totalPosts').textContent = totalPosts;
-        
-        // Update system impact
-        updateSystemImpact(activeUsers, postsPerMin);
-        
-        // Update chart
-        updateChartData(activeUsers, postsPerMin);
-        
-        // Generate feed activity
-        generateFeedActivity(postsPerMin, postLength);
-        
-        // Check if simulation should end
-        if (timeElapsed >= duration) {
+          const feedContainer = document.querySelector('#activityFeed .list-group-flush');
+          feedContainer.innerHTML = '';
+          status.activity_feed.forEach(post => {
+            const el = document.createElement('div');
+            el.className = 'list-group-item';
+            el.innerHTML = `
+              <div class="d-flex w-100 justify-content-between">
+                <h6>${post.user}</h6>
+                <small class="text-muted">Just now</small>
+              </div>
+              <p class="mb-1">${post.text}</p>
+            `;
+            feedContainer.appendChild(el);
+          });
+        })
+        .catch(err => {
+          console.error(err);
           clearInterval(simulationInterval);
           document.getElementById('startSimulation').disabled = false;
-          document.getElementById('stopSimulation').disabled = true;
-        }
-      }, 1000); // Update every second (1 minute = 60 seconds in simulation)
+          document.getElementById('stopSimulation').disabled  = true;
+        });
+    }
+
+    document.getElementById('startSimulation').addEventListener('click', function() {
+      const payload = {
+        user_count:   +document.getElementById('userCount').value,
+        post_rate:    +document.getElementById('postRate').value,
+        post_length:  +document.getElementById('postLength').value,
+        duration:     +document.getElementById('duration').value,
+        random_users: document.getElementById('randomUsers').checked
+      };
+
+      this.disabled = true;
+      document.getElementById('stopSimulation').disabled = false;
+      document.querySelector('#activityFeed .list-group-flush').innerHTML = '';
+
+      fetch(START_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(safeJson)
+      .then(data => {
+        if (data.error) throw new Error(data.error);
+        simulationInterval = setInterval(pollStatus, 1000);
+      })
+      .catch(err => {
+        alert(err.message);
+        document.getElementById('startSimulation').disabled = false;
+        document.getElementById('stopSimulation').disabled  = true;
+      });
     });
+
+    document.getElementById('stopSimulation').addEventListener('click', function() {
+      fetch(STOP_URL, { method: 'POST' })
+        .then(() => {
+          clearInterval(simulationInterval);
+          document.getElementById('startSimulation').disabled = false;
+          document.getElementById('stopSimulation').disabled  = true;
+        })
+        .catch(err => console.error(err));
+    });
+    // === end of changed block ===
   });
 </script>
 {% endblock %}
