@@ -57,6 +57,24 @@
   </div>
 </div>
 
+<style>
+.intensity-label {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #0d6efd; /* bleu Bootstrap */
+  letter-spacing: 1px;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  text-shadow: 1px 1px 2px #e0e0e0;
+}
+.intensity-value {
+  font-size: 2.2rem;
+  font-weight: bold;
+  color: #198754; /* vert Bootstrap */
+  margin-left: 0.5rem;
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+</style>
+
 <script>
   const MODEL_API_URL = 'http://localhost:8000/predict';
 
@@ -117,10 +135,11 @@
   modelResult.prediction === 1 ? "🟢 Fan ON" : "🔴 Fan OFF";
 
 
-      document.getElementById('prediction-confidence').innerText =
-        modelResult.probability !== null
-          ? "Intensity: " + (modelResult.probability * 100).toFixed(1) + "%"
-          : "Model does not return intensity";
+    document.getElementById('prediction-confidence').innerHTML =
+  modelResult.probability !== null
+    ? `<span class="intensity-label">Intensity&nbsp;=</span> <span class="intensity-value">${(modelResult.probability * 100).toFixed(1)}%</span>`
+    : "<span class='text-danger'>Model does not return intensity</span>";
+
 
     } catch (err) {
       document.getElementById('prediction-output').innerText = "Error";

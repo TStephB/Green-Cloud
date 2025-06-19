@@ -1,27 +1,32 @@
 [
   {
-    "username": "aa",
-    "text": "test",
-    "timestamp": "2025-06-16T14:16:03.294964"
+    "username": "admin",
+    "text": "Green Cloud \ud83c\udf31\r\n\"Bienvenue sur notre plateforme de gestion de donn\u00e9es \u00e9cologique ! Ensemble, r\u00e9duisons notre empreinte carbone. #GreenTech\"",
+    "timestamp": "2025-06-19T03:27:18.309050"
   },
   {
     "username": "admin",
-    "text": "test ",
-    "timestamp": "2025-04-23T21:24:28.777893"
+    "text": "Nouveau partenariat \ud83d\udd3a\r\n\"Nous sommes fiers d'annoncer notre collaboration avec EcoData pour une gestion des donn\u00e9es plus verte. Ensemble, faisons la diff\u00e9rence !\"",
+    "timestamp": "2025-06-19T03:26:58.251498"
   },
   {
     "username": "admin",
-    "text": "Test",
-    "timestamp": "2025-04-23T21:24:15.461055"
+    "text": "Nouvelle fonctionnalit\u00e9 : Dashboard CO2 \ud83d\udcca\r\n\"Suivez en temps r\u00e9el l'impact environnemental de vos donn\u00e9es avec notre outil de monitoring. Disponible d\u00e8s maintenant !\"",
+    "timestamp": "2025-06-19T03:26:18.309050"
   },
   {
-    "username": "aa",
-    "text": "hhgjg",
-    "timestamp": "2025-04-23T18:48:21.550165"
+    "username": "admin",
+    "text": "Astuce du jour \ud83d\udca1\r\n\"Saviez-vous qu'\u00e9teindre les serveurs inutilis\u00e9s peut r\u00e9duire la consommation \u00e9nerg\u00e9tique de 15% ? Partagez vos bonnes pratiques !\"",
+    "timestamp": "2025-06-19T03:25:58.251498"
   },
   {
-    "username": "aa",
-    "text": "jgjkejlkej",
-    "timestamp": "2025-04-22T23:59:06.570221"
+    "username": "admin",
+    "text": "Cr\u00e9ateurs & Vision \u2728\r\n\"Green Cloud a \u00e9t\u00e9 fond\u00e9 par une \u00e9quipe d'\u00e9l\u00e8ves ing\u00e9nieurs en tech. Notre mission : concilier performance num\u00e9rique et respect de la plan\u00e8te.\"",
+    "timestamp": "2025-06-19T03:25:46.255099"
+  },
+  {
+    "username": "admin",
+    "text": "Bienvenue sur Green Cloud ! \ud83c\udf31\r\n\"Rejoignez notre communaut\u00e9 engag\u00e9e pour une gestion durable des donn\u00e9es. Ensemble, r\u00e9duisons notre empreinte carbone tout en innovant ! #\u00c9coTech\"",
+    "timestamp": "2025-06-19T03:24:18.032894"
   }
 ]
