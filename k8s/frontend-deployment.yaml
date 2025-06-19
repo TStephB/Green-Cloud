@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fan-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fan-controller
+  template:
+    metadata:
+      labels:
+        app: fan-controller
+    spec:
+      containers:
+        - name: fan-controller
+          image: moncompte/fan-controller:latest
+          ports:
+            - containerPort: 5004
+          volumeMounts:
+            - name: sensors-volume
+              mountPath: /app/sensors
+      volumes:
+        - name: sensors-volume
+          hostPath:
+            path: Green-Cloud\sensors

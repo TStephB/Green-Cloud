@@ -1,1 +1,56 @@
+version: '3.8'
 
+services:
+  frontend:
+    build:
+      context: ./services/frontend
+    ports:
+      - "5000:5000"
+    environment:
+      RUN_MODE: docker
+      SECRET_KEY: your_secret_key
+
+  data-collector:
+    build:
+      context: ./services/data-collector
+    ports:
+      - "5001:5000"
+
+  sensor-visualizer:
+    build:
+      context: .
+      dockerfile: services/sensor-visualizer/Dockerfile
+    ports:
+      - "5002:5000"
+    volumes:
+      - ./sensors:/app/sensors
+
+  ml-controller:
+    build:
+      context: .
+      dockerfile: services/ml-controller/Dockerfile
+    ports:
+      - "5003:5000"
+    volumes:
+      - ./sensors:/app/sensors
+
+  fan-controller:
+    build:
+      context: .
+      dockerfile: services/fan-controller/Dockerfile
+    ports:
+      - "5004:5000"
+    volumes:
+      - ./sensors:/app/sensors
+
+  green-meter:
+    build:
+      context: ./services/green-meter
+    ports:
+      - "5006:5000"
+
+  workload-tester:
+    build:
+      context: ./services/workload-tester
+    ports:
+      - "5005:5000"

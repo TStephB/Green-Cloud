@@ -24,19 +24,6 @@ simulation = {
 simulation_lock = threading.Lock()
 simulation_thread = None
 
-sample_posts = [
-    "Just checked the energy stats - looking good!",
-    "Our solar panels are generating 4.2kW right now",
-    "Switched to battery power during peak hours",
-    "The new ML model predictions are accurate",
-    "Wind turbine output is lower than expected today",
-    "Reduced server load by 15% with optimizations",
-    "Data center temperature stable at 24°C",
-    "Implemented new cooling strategy - working well",
-    "Energy consumption trending downward this week",
-    "The green meter shows excellent efficiency"
-]
-
 def generate_random_post(length):
     letters = string.ascii_letters + string.digits + ' '
     return ''.join(random.choice(letters) for _ in range(length))

@@ -1,5 +1,72 @@
 {% extends 'base.html' %}
+
 {% block content %}
-<h1>Manual Control</h1>
-<p>This is a placeholder page for manual_control.</p>
+<div class="container">
+  <h1 class="mb-4"><i class="fas fa-fan me-2"></i>Manual Fan Control</h1>
+
+  <!-- Fan Speed Control -->
+  <div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+      <i class="fas fa-tachometer-alt me-2"></i>Fan Speed Control
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('manual_control') }}">
+        <div class="mb-3">
+          <label for="speedRange" class="form-label">Fan Speed: <span id="speedValue">50</span>%</label>
+          <input type="range" class="form-range" id="speedRange" name="speed" min="0" max="100" value="50" oninput="updateSpeedValue(this.value)">
+        </div>
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-save me-2"></i>Set Speed
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Fan Power Control -->
+  <div class="card">
+    <div class="card-header bg-success text-white">
+      <i class="fas fa-power-off me-2"></i>Fan Power Control
+    </div>
+    <div class="card-body">
+      <div class="btn-group" role="group">
+        <button type="button" class="btn btn-outline-success" onclick="toggleFanPower(true)">
+          <i class="fas fa-play me-2"></i>Turn On
+        </button>
+        <button type="button" class="btn btn-outline-danger" onclick="toggleFanPower(false)">
+          <i class="fas fa-stop me-2"></i>Turn Off
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript for dynamic updates -->
+<script>
+  // Update the displayed speed value
+  function updateSpeedValue(value) {
+    document.getElementById('speedValue').textContent = value;
+  }
+
+  // Function to toggle fan power
+  function toggleFanPower(powerOn) {
+    fetch("{{ url_for('manual_control') }}", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ power: powerOn })
+    })
+    .then(response => {
+      if (response.ok) {
+        alert(`Fans ${powerOn ? 'turned on' : 'turned off'} successfully!`);
+      } else {
+        alert('Failed to update fan power');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('An error occurred while updating fan power');
+    });
+  }
+</script>
 {% endblock %}
