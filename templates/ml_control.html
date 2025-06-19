@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Prédiction du modèle IA</h2>
+
+<form method="post" action="{{ url_for('ml_control_predict') }}">
+  <label>Température :</label>
+  <input name="temperature" type="number" step="any" required />
+
+  <label>Humidité :</label>
+  <input name="humidity" type="number" step="any" required />
+
+  <!-- Ajoute d’autres inputs si nécessaire -->
+
+  <button type="submit">Prédire</button>
+</form>
+
+{% if prediction %}
+  <p><strong>Résultat :</strong> {{ prediction }}</p>
+{% endif %}
+
+{% if error %}
+  <p style="color:red">{{ error }}</p>
+{% endif %}
+{% endblock %}

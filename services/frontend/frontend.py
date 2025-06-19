@@ -102,6 +102,35 @@ def ml_control() -> str:
     except requests.exceptions.RequestException as e:
         data = {'error': f'ML service error: {e}'}
     return render_template('ml_control.html', title='ML Control', data=data)
+@app.route('/ml-control/predict', methods=['POST'])
+def ml_control_predict() -> str:
+    try:
+        features = {
+            'temperature': float(request.form['temperature']),
+            'humidity': float(request.form['humidity']),
+            # ajoute ici d’autres features si nécessaires
+        }
+        resp = requests.post(
+            f"{SERVICE_URLS['ml_control']}/predict",
+            json=features,
+            timeout=5
+        )
+        resp.raise_for_status()
+        result = resp.json()
+        prediction = result.get("prediction", "N/A")
+        return render_template(
+            'ml_control.html',
+            title='ML Control',
+            data=features,
+            prediction=prediction
+        )
+    except Exception as e:
+        return render_template(
+            'ml_control.html',
+            title='ML Control',
+            data={},
+            error=f"Erreur : {e}"
+        )
 
 @app.route('/manual-control', methods=['GET', 'POST'])
 def manual_control() -> str:
