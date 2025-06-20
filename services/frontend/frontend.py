@@ -14,12 +14,12 @@ app.secret_key = os.getenv('SECRET_KEY', DEFAULT_SECRET_KEY)
 # Service Configuration
 RUN_MODE = os.getenv("RUN_MODE", DEFAULT_RUN_MODE)  # "local" or "docker"
 SERVICE_URLS = {
-    'sensors':        os.getenv("SENSORS_URL",        'http://localhost:5002') if RUN_MODE == "local" else 'http://sensor-visualizer:5000',
-    'ml_control':     os.getenv("ML_CONTROL_URL",     'http://localhost:5003') if RUN_MODE == "local" else 'http://ml-controller:5000',
-    'manual_control': os.getenv("MANUAL_CONTROL_URL", 'http://localhost:5004') if RUN_MODE == "local" else 'http://fan-controller:5000',
-    'greenmeter':     os.getenv("GREENMETER_URL",     'http://localhost:5006') if RUN_MODE == "local" else 'http://green-meter:5000',
-    'feed':           os.getenv("FEED_URL",           'http://localhost:5001') if RUN_MODE == "local" else 'http://data-collector:5000',
-    'workload_tester':os.getenv("WORKLOAD_TESTER_URL", 'http://localhost:5005') if RUN_MODE == "local" else 'http://workload-tester:5000',
+    'sensors':        os.getenv("SENSORS_URL",        'http://localhost:5002') if RUN_MODE == "local" else 'http://sensor-visualizer:5002',
+    'ml_control':     os.getenv("ML_CONTROL_URL",     'http://localhost:5003') if RUN_MODE == "local" else 'http://ml-controller:5003',
+    'manual_control': os.getenv("MANUAL_CONTROL_URL", 'http://localhost:5004') if RUN_MODE == "local" else 'http://fan-controller:5004',
+    'greenmeter':     os.getenv("GREENMETER_URL",     'http://localhost:5006') if RUN_MODE == "local" else 'http://green-meter:5006',
+    'feed':           os.getenv("FEED_URL",           'http://localhost:5001') if RUN_MODE == "local" else 'http://data-collector:5001',
+    'workload_tester':os.getenv("WORKLOAD_TESTER_URL", 'http://localhost:5005') if RUN_MODE == "local" else 'http://workload-tester:5005',
 }
 
 @app.before_request
