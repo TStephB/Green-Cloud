@@ -61,4 +61,5 @@ def predict(features: Features):
         results[name] = {"prediction": pred, "probability": prob}
     return results
 
-# Lancer le serveur avec : uvicorn ml_api:app --reload
+# Lancer le serveur avec : cd services/ml-controller
+# uvicorn ml_control:app --reload
