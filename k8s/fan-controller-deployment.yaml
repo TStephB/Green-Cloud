@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fan-controller
+  labels:
+    app: fan-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fan-controller
+  template:
+    metadata:
+      labels:
+        app: fan-controller
+    spec:
+      containers:
+      - name: fan-controller
+        image: ali264/green-cloud-fan-controller:latest
+        ports:
+        - containerPort: 5004
+        env:
+        - name: RUN_MODE
+          value: "docker"

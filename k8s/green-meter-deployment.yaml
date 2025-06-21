@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: green-meter
+  labels:
+    app: green-meter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: green-meter
+  template:
+    metadata:
+      labels:
+        app: green-meter
+    spec:
+      containers:
+      - name: green-meter
+        image: ali264/green-cloud-green-meter:latest
+        ports:
+        - containerPort: 5006
+        env:
+        - name: RUN_MODE
+          value: "docker"
