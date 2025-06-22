@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: workload-tester
+  labels:
+    app: workload-tester
+spec:
+  type: ClusterIP
+  selector:
+    app: workload-tester
+  ports:
+  - port: 5005
+    targetPort: 5005
+    protocol: TCP

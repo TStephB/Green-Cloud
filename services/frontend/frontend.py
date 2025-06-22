@@ -2,6 +2,9 @@ from flask import Flask, render_template, request, redirect, url_for, session, R
 import os
 import requests
 from typing import Optional, Union
+from sensors import read_dht22, read_bmp280, read_acs712
+import pandas as pd
+import joblib
 
 # Configuration Constants
 DEFAULT_SECRET_KEY = 'your_secret_key'
@@ -83,15 +86,44 @@ def logout() -> Response:
     session.pop('username', None)
     return redirect(url_for('login'))
 
+# Charger scaler et modèle une fois (idéalement en global)
+BASE_DIR = r"C:\Users\YS\Documents"
+MODEL_DIR = os.path.join(BASE_DIR, "models")
+SCALER_PATH = os.path.join(MODEL_DIR, "scaler.pkl")
+MODEL_PATH = os.path.join(MODEL_DIR, "model.pkl")
+
+scaler = joblib.load(SCALER_PATH)
+model = joblib.load(MODEL_PATH)
+
 @app.route('/sensors')
 def sensors() -> str:
     try:
-        resp = requests.get(f"{SERVICE_URLS['sensors']}/data", timeout=5)
-        resp.raise_for_status()
-        data = resp.json()
-    except requests.exceptions.RequestException as e:
-        data = {'error': f'Sensor service error: {e}'}
+        # Lecture capteurs et prédiction
+        humidity, temperature = read_dht22()
+        pressure = read_bmp280()
+        current = read_acs712(simulate=True)
+
+        df = pd.DataFrame([{
+            "temperature_dht": temperature,
+            "humidity_dht": humidity,
+            "pressure_bmp": pressure,
+            "current_sct": current
+        }])
+        X_scaled = scaler.transform(df)
+        prediction = model.predict(X_scaled)[0]
+
+        data = {
+            'temperature': temperature,
+            'humidity': humidity,
+            'pressure': pressure,
+            'current': current,
+            'prediction': prediction
+        }
+    except Exception as e:
+        data = {'error': f'Sensor reading or ML prediction error: {e}'}
+    
     return render_template('sensors.html', title='Sensors', data=data)
+
 
 @app.route('/ml-control')
 def ml_control() -> str:

@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sensor-visualizer
+  labels:
+    app: sensor-visualizer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sensor-visualizer
+  template:
+    metadata:
+      labels:
+        app: sensor-visualizer
+    spec:
+      containers:
+      - name: sensor-visualizer
+        image: ali264/green-cloud-sensor-visualizer:latest
+        ports:
+        - containerPort: 5002
+        env:
+        - name: RUN_MODE
+          value: "docker"
