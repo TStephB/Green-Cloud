@@ -1,26 +1,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: fan-controller
+  name: frontend
+  labels:
+    app: frontend
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: fan-controller
+      app: frontend
   template:
     metadata:
       labels:
-        app: fan-controller
+        app: frontend
     spec:
       containers:
-        - name: fan-controller
-          image: moncompte/fan-controller:latest
-          ports:
-            - containerPort: 5004
-          volumeMounts:
-            - name: sensors-volume
-              mountPath: /app/sensors
-      volumes:
-        - name: sensors-volume
-          hostPath:
-            path: Green-Cloud\sensors
+      - name: frontend
+        image: ali264/green-cloud-frontend:latest
+        ports:
+        - containerPort: 5000
+        env:
+        - name: RUN_MODE
+          value: "docker"
+        - name: SECRET_KEY
+          value: "your_secret_key"

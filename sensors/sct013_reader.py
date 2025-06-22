@@ -1,4 +1,3 @@
-
 import spidev
 import time
 import math
@@ -36,4 +35,4 @@ canal_sct = 0  # Utiliser le canal 0 du MCP3008
 while True:
     courant_mesure = lire_courant(canal_sct)
     print(f"Courant mesuré : {courant_mesure:.2f} A")
-    time.sleep(1
+    time.sleep(1)
