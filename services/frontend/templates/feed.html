@@ -1,21 +1,42 @@
-
 {% extends 'base.html' %}
 {% block content %}
-<h1>Feed</h1>
-{% if message %}<div class="alert alert-warning">{{ message }}</div>{% endif %}
-<form method="POST">
-  <div class="mb-3">
-    <textarea name="post_text" class="form-control" placeholder="What's on your mind?" rows="3"></textarea>
-  </div>
-  <button type="submit" class="btn btn-primary">Post</button>
-</form>
-<hr>
-{% for post in posts %}
-  <div class="card mb-2">
-    <div class="card-body">
-      <h6 class="card-subtitle mb-2 text-muted">{{ post.username }}</h6>
-      <p class="card-text">{{ post.text }}</p>
+<div class="container py-4">
+  <h1 class="mb-4"><i class="fas fa-comments me-2"></i>Community Feed</h1>
+  {% if message %}<div class="alert alert-warning">{{ message }}</div>{% endif %}
+  <form method="POST" class="mb-4">
+    <div class="mb-3">
+      <textarea name="post_text" class="form-control" placeholder="What's on your mind?" rows="3" maxlength="500" required></textarea>
+      <div class="form-text text-end"><span id="charCount">0</span>/500</div>
     </div>
+    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane me-1"></i>Post</button>
+  </form>
+  <hr>
+  <div class="feed-list">
+    {% for post in posts %}
+      <div class="card mb-3 shadow-sm animate__animated animate__fadeIn">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="card-subtitle text-primary mb-0"><i class="fas fa-user-circle me-1"></i>{{ post.username }}</h6>
+            <span class="badge bg-light text-secondary">{{ post.timestamp if post.timestamp else '' }}</span>
+          </div>
+          <p class="card-text fs-5">{{ post.text }}</p>
+        </div>
+      </div>
+    {% else %}
+      <div class="text-center text-muted">No posts yet. Be the first to share something!</div>
+    {% endfor %}
   </div>
-{% endfor %}
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+<script>
+// Compteur de caractères pour le textarea
+const textarea = document.querySelector('textarea[name="post_text"]');
+const charCount = document.getElementById('charCount');
+if (textarea && charCount) {
+  textarea.addEventListener('input', function() {
+    charCount.textContent = this.value.length;
+  });
+}
+</script>
 {% endblock %}

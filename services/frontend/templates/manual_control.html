@@ -1,21 +1,22 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container">
-  <h1 class="mb-4"><i class="fas fa-fan me-2"></i>Manual Fan Control</h1>
+<div class="container py-4">
+  <h1 class="mb-4 text-center"><i class="fas fa-fan me-2"></i>Manual Fan Control</h1>
 
   <!-- Fan Speed Control -->
-  <div class="card mb-4">
-    <div class="card-header bg-primary text-white">
-      <i class="fas fa-tachometer-alt me-2"></i>Fan Speed Control
+  <div class="card mb-4 shadow-lg border-0">
+    <div class="card-header bg-primary text-white d-flex align-items-center">
+      <i class="fas fa-tachometer-alt me-2"></i>
+      <span>Fan Speed Control</span>
     </div>
     <div class="card-body">
-      <form method="POST" action="{{ url_for('manual_control') }}">
+      <form id="speedForm" onsubmit="event.preventDefault(); handleSpeedChange();">
         <div class="mb-3">
-          <label for="speedRange" class="form-label">Fan Speed: <span id="speedValue">50</span>%</label>
-          <input type="range" class="form-range" id="speedRange" name="speed" min="0" max="100" value="50" oninput="updateSpeedValue(this.value)">
+          <label for="speedRange" class="form-label fs-5">Fan Speed: <span id="speedValue" class="fw-bold text-primary">50</span>%</label>
+          <input type="range" class="form-range" id="speedRange" name="speed" min="0" max="100" value="50" oninput="updateSpeedValue(this.value)" style="accent-color: #0d6efd;">
         </div>
-        <button type="submit" class="btn btn-primary">
+        <button type="submit" class="btn btn-primary w-100">
           <i class="fas fa-save me-2"></i>Set Speed
         </button>
       </form>
@@ -23,16 +24,17 @@
   </div>
 
   <!-- Fan Power Control -->
-  <div class="card">
-    <div class="card-header bg-success text-white">
-      <i class="fas fa-power-off me-2"></i>Fan Power Control
+  <div class="card shadow-lg border-0">
+    <div class="card-header bg-success text-white d-flex align-items-center">
+      <i class="fas fa-power-off me-2"></i>
+      <span>Fan Power Control</span>
     </div>
-    <div class="card-body">
+    <div class="card-body text-center">
       <div class="btn-group" role="group">
-        <button type="button" class="btn btn-outline-success" onclick="toggleFanPower(true)">
+        <button type="button" class="btn btn-outline-success btn-lg px-4" onclick="toggleFanPower(true)">
           <i class="fas fa-play me-2"></i>Turn On
         </button>
-        <button type="button" class="btn btn-outline-danger" onclick="toggleFanPower(false)">
+        <button type="button" class="btn btn-outline-danger btn-lg px-4" onclick="toggleFanPower(false)">
           <i class="fas fa-stop me-2"></i>Turn Off
         </button>
       </div>
@@ -40,21 +42,56 @@
   </div>
 </div>
 
-<!-- JavaScript for dynamic updates -->
+<style>
+  body { background: linear-gradient(120deg, #e0eafc 0%, #cfdef3 100%); }
+  .card { border-radius: 18px; }
+  .card-header { font-size: 1.2rem; letter-spacing: 1px; }
+  .btn-group .btn { font-size: 1.1rem; }
+  .btn-outline-success, .btn-outline-danger { transition: 0.2s; }
+  .btn-outline-success:hover { background: #198754; color: #fff; }
+  .btn-outline-danger:hover { background: #dc3545; color: #fff; }
+  #speedRange { height: 2.2rem; }
+</style>
+
+<!-- JavaScript for dynamic updates and API control -->
 <script>
+  // Adresse de l'API SensorsFansApi.py sur la Raspberry Pi
+  const FAN_API_BASE = "http://172.22.2.247:8000";
+
   // Update the displayed speed value
   function updateSpeedValue(value) {
     document.getElementById('speedValue').textContent = value;
+    // Allume/éteint si curseur à 0% ou 100%
+    if (parseInt(value) === 0) {
+      sendFanCommand(false);
+    } else if (parseInt(value) === 100) {
+      sendFanCommand(true);
+    }
   }
 
-  // Function to toggle fan power
+  // Gère le changement de vitesse (bouton Set Speed)
+  function handleSpeedChange() {
+    const speed = parseInt(document.getElementById('speedRange').value);
+    // Ici, tu peux ajouter un appel API pour la vitesse si besoin
+    if (speed === 0) {
+      sendFanCommand(false);
+    } else if (speed === 100) {
+      sendFanCommand(true);
+    } else {
+      alert('Fan speed set to ' + speed + '%. (No direct API for speed, only ON/OFF)');
+    }
+  }
+
+  // Fonction pour activer/désactiver le ventilateur
   function toggleFanPower(powerOn) {
-    fetch("{{ url_for('manual_control') }}", {
+    sendFanCommand(powerOn);
+  }
+
+  // Envoie la commande à l'API Raspberry Pi
+  function sendFanCommand(powerOn) {
+    const endpoint = powerOn ? "/ventilation/on" : "/ventilation/off";
+    fetch(FAN_API_BASE + endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ power: powerOn })
     })
     .then(response => {
       if (response.ok) {

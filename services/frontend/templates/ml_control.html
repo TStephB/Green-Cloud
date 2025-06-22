@@ -78,24 +78,28 @@
 <script>
   const MODEL_API_URL = 'http://localhost:8000/predict';
 
+  // Adresse de l'API SensorsFansApi.py sur la Raspberry Pi
+  const FAN_API_BASE = "http://172.22.2.247:8000";
+  let lastFanState = null; // Pour éviter les requêtes inutiles
+
   // Initialise les modèles une fois que la première réponse est reçue
   async function fetchModelListOnce() {
-    const simulated = simulateSensorData();
-    const resp = await fetch(MODEL_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(simulated)
-    });
-    const models = Object.keys(await resp.json());
-    const select = document.getElementById("modelSelect");
-    select.innerHTML = ""; // Reset
-    models.forEach(model => {
-      const option = document.createElement("option");
-      option.value = model;
-      option.text = model;
-      select.appendChild(option);
-    });
-    select.selectedIndex = 0;
+    try {
+      const resp = await fetch('http://localhost:8000/models');
+      const models = await resp.json();
+      const select = document.getElementById("modelSelect");
+      select.innerHTML = ""; // Reset
+      models.forEach(model => {
+        const option = document.createElement("option");
+        option.value = model;
+        option.text = model;
+        select.appendChild(option);
+      });
+      select.selectedIndex = 0;
+    } catch (err) {
+      const select = document.getElementById("modelSelect");
+      select.innerHTML = "<option disabled>Error loading models</option>";
+    }
   }
 
   function simulateSensorData() {
@@ -107,6 +111,15 @@
       energy: +(1 + Math.random()*10).toFixed(2),
       workload: +(Math.random()*100).toFixed(2)
     };
+  }
+
+  async function sendFanCommand(state) {
+    const endpoint = state === 1 ? "/ventilation/on" : "/ventilation/off";
+    try {
+      await fetch(FAN_API_BASE + endpoint, { method: "POST" });
+    } catch (err) {
+      console.error("Erreur lors de l'envoi de la commande ventilateur :", err);
+    }
   }
 
   async function updatePrediction() {
@@ -131,16 +144,19 @@
       const selectedModel = document.getElementById("modelSelect").value;
       const modelResult = result[selectedModel];
 
+      // Affichage
       document.getElementById('prediction-output').innerText =
-  modelResult.prediction === 1 ? "🟢 Fan ON" : "🔴 Fan OFF";
+        modelResult.prediction === 1 ? "🟢 Fan ON" : "🔴 Fan OFF";
+      document.getElementById('prediction-confidence').innerHTML =
+        modelResult.probability !== null
+          ? `<span class="intensity-label">Intensity&nbsp;=</span> <span class="intensity-value">${(modelResult.probability * 100).toFixed(1)}%</span>`
+          : "<span class='text-danger'>Model does not return intensity</span>";
 
-
-    document.getElementById('prediction-confidence').innerHTML =
-  modelResult.probability !== null
-    ? `<span class="intensity-label">Intensity&nbsp;=</span> <span class="intensity-value">${(modelResult.probability * 100).toFixed(1)}%</span>`
-    : "<span class='text-danger'>Model does not return intensity</span>";
-
-
+      // --- Contrôle automatique du ventilateur ---
+      if (lastFanState !== modelResult.prediction) {
+        await sendFanCommand(modelResult.prediction);
+        lastFanState = modelResult.prediction;
+      }
     } catch (err) {
       document.getElementById('prediction-output').innerText = "Error";
       document.getElementById('prediction-confidence').innerText = err;

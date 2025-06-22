@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import os
 import joblib
 import numpy as np
@@ -52,14 +53,21 @@ class Features(BaseModel):
 # --- Endpoint de prédiction ---
 @app.post("/predict")
 def predict(features: Features):
-    X = np.array([[getattr(features, f) for f in FEATURE_NAMES]])
-    Xs = scaler.transform(X)
-    results = {}
-    for name, m in models.items():
-        pred = int(m.predict(Xs)[0])
-        prob = float(m.predict_proba(Xs)[0][1]) if hasattr(m, "predict_proba") else None
-        results[name] = {"prediction": pred, "probability": prob}
-    return results
+    try:
+        X = np.array([[getattr(features, f) for f in FEATURE_NAMES]])
+        Xs = scaler.transform(X)
+        results = {}
+        for name, m in models.items():
+            pred = int(m.predict(Xs)[0])
+            prob = float(m.predict_proba(Xs)[0][1]) if hasattr(m, "predict_proba") else None
+            results[name] = {"prediction": pred, "probability": prob}
+        return results
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.get("/models")
+def get_models():
+    return list(models.keys())
 
 # Lancer le serveur avec : cd services/ml-controller
 # uvicorn ml_control:app --reload

@@ -1,151 +1,520 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="container">
-  <h1 class="mb-4"><i class="fas fa-thermometer-half me-2"></i>Sensor Dashboard</h1>
-  
-  <div class="row g-4 mb-4">
-    <!-- Temperature Card -->
-    <div class="col-md-4">
-      <div class="card h-100">
-        <div class="card-header bg-primary text-white">
-          <i class="fas fa-temperature-high me-2"></i>Temperature
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tableau de bord des capteurs</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .card {
+            transition: transform 0.3s, box-shadow 0.3s;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+        .card-header {
+            font-weight: bold;
+            padding: 15px 20px;
+        }
+        .card-body {
+            padding: 20px;
+        }
+        .sensor-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .chart-container {
+            height: 200px;
+            margin-top: 15px;
+        }
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+        .last-updated {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        .average-badge {
+            background-color: #6f42c1;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+        .sensor-icon {
+            font-size: 1.8rem;
+            margin-right: 10px;
+        }
+        .sensor-card-title {
+            display: flex;
+            align-items: center;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .status-active {
+            background-color: #28a745;
+        }
+        .status-inactive {
+            background-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="d-flex justify-content-end align-items-center p-3">
+        <a href="/" class="btn btn-outline-primary">
+            <i class="fas fa-home me-2"></i>Retour à l'accueil
+        </a>
+    </div>
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="mb-0"><i class="fas fa-microchip me-2"></i>Tableau de bord des capteurs</h1>
+            <div id="connection-status" class="status-badge bg-success">
+                <span class="status-indicator status-active"></span>
+                Connecté à l'API
+            </div>
         </div>
-        <div class="card-body">
-          <h2 class="display-4 text-center">24.5°C</h2>
-          <div class="chart-container" style="height: 200px;">
-            <canvas id="tempChart"></canvas>
-          </div>
+        
+        <div class="row">
+            <!-- Carte Température -->
+            <div class="col-lg-4 col-md-6">
+                <div class="card border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <div class="sensor-card-title">
+                            <i class="fas fa-temperature-high sensor-icon"></i>
+                            Température
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="sensor-value" id="temperature-value">-- °C</div>
+                                <div class="last-updated">Dernière mise à jour: <span id="temperature-time">--</span></div>
+                            </div>
+                            <div class="average-badge">Moyenne</div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="d-flex justify-content-between">
+                                <span>DHT22: <span id="temp-dht22">-- °C</span></span>
+                                <span>BME280: <span id="temp-bme280">-- °C</span></span>
+                            </div>
+                        </div>
+                        <div class="chart-container mt-3">
+                            <canvas id="tempChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Carte Humidité -->
+            <div class="col-lg-4 col-md-6">
+                <div class="card border-info">
+                    <div class="card-header bg-info text-white">
+                        <div class="sensor-card-title">
+                            <i class="fas fa-tint sensor-icon"></i>
+                            Humidité
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="sensor-value" id="humidity-value">-- %</div>
+                                <div class="last-updated">Dernière mise à jour: <span id="humidity-time">--</span></div>
+                            </div>
+                            <div class="average-badge">Moyenne</div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="d-flex justify-content-between">
+                                <span>DHT22: <span id="hum-dht22">-- %</span></span>
+                                <span>BME280: <span id="hum-bme280">-- %</span></span>
+                            </div>
+                        </div>
+                        <div class="chart-container mt-3">
+                            <canvas id="humidityChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Carte Courant/Puissance -->
+            <div class="col-lg-4 col-md-6">
+                <div class="card border-success">
+                    <div class="card-header bg-success text-white">
+                        <div class="sensor-card-title">
+                            <i class="fas fa-bolt sensor-icon"></i>
+                            Courant & Puissance
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="sensor-value" id="current-value">-- A</div>
+                        <div class="sensor-value mt-3" id="power-value">-- W</div>
+                        <div class="last-updated mt-2">Dernière mise à jour: <span id="power-time">--</span></div>
+                        <div class="chart-container mt-3">
+                            <canvas id="powerChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="card-footer small text-muted">
-          Updated: <span class="live-time">Just now</span>
+        
+        <!-- Carte Pression & Altitude -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <div class="sensor-card-title">
+                            <i class="fas fa-compress-alt sensor-icon"></i>
+                            Pression Atmosphérique
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="sensor-value" id="pressure-value">-- hPa</div>
+                        <div class="last-updated">Dernière mise à jour: <span id="pressure-time">--</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-secondary">
+                    <div class="card-header bg-secondary text-white">
+                        <div class="sensor-card-title">
+                            <i class="fas fa-mountain sensor-icon"></i>
+                            Altitude
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="sensor-value" id="altitude-value">-- cm</div>
+                        <div class="last-updated">Dernière mise à jour: <span id="altitude-time">--</span></div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
+        
+        <!-- Tableau des capteurs -->
+        <div class="card mt-4">
+            <div class="card-header bg-dark text-white">
+                <i class="fas fa-list me-2"></i>Statut des capteurs
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Capteur</th>
+                                <th>Type</th>
+                                <th>Statut</th>
+                                <th>Dernière lecture</th>
+                                <th>Valeur</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>BMP280</td>
+                                <td>Température/Pression</td>
+                                <td><span class="badge bg-success" id="bmp280-status">Actif</span></td>
+                                <td id="bmp280-reading">--</td>
+                                <td id="bmp280-value">--</td>
+                            </tr>
+                            <tr>
+                                <td>DHT22</td>
+                                <td>Température/Humidité</td>
+                                <td><span class="badge bg-success" id="dht22-status">Actif</span></td>
+                                <td id="dht22-reading">--</td>
+                                <td id="dht22-value">--</td>
+                            </tr>
+                            <tr>
+                                <td>SCT013</td>
+                                <td>Courant</td>
+                                <td><span class="badge bg-success" id="sct013-status">Actif</span></td>
+                                <td id="sct013-reading">--</td>
+                                <td id="sct013-value">--</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Humidity Card -->
-    <div class="col-md-4">
-      <div class="card h-100">
-        <div class="card-header bg-info text-white">
-          <i class="fas fa-tint me-2"></i>Humidity
-        </div>
-        <div class="card-body">
-          <h2 class="display-4 text-center">45%</h2>
-          <div class="chart-container" style="height: 200px;">
-            <canvas id="humidityChart"></canvas>
-          </div>
-        </div>
-        <div class="card-footer small text-muted">
-          Updated: <span class="live-time">Just now</span>
-        </div>
-      </div>
-    </div>
+    <script>
+        // Configuration
+        const API_URL = "http://172.22.2.247:8000/sensor-data";
+        const UPDATE_INTERVAL = 3000; // 3 secondes
 
-    <!-- Power Usage Card -->
-    <div class="col-md-4">
-      <div class="card h-100">
-        <div class="card-header bg-success text-white">
-          <i class="fas fa-bolt me-2"></i>Power Usage
-        </div>
-        <div class="card-body">
-          <h2 class="display-4 text-center">1.2kW</h2>
-          <div class="chart-container" style="height: 200px;">
-            <canvas id="powerChart"></canvas>
-          </div>
-        </div>
-        <div class="card-footer small text-muted">
-          Updated: <span class="live-time">Just now</span>
-        </div>
-      </div>
-    </div>
-  </div>
+        // Stockage historique pour les graphiques
+        let tempHistory = [];
+        let humidityHistory = [];
+        let currentHistory = [];
+        let timeHistory = [];
+        const MAX_HISTORY = 20;
 
-  <!-- Detailed Chart -->
-  <div class="card mb-4">
-    <div class="card-header bg-secondary text-white">
-      <i class="fas fa-chart-line me-2"></i>Historical Data
-    </div>
-    <div class="card-body">
-      <div class="chart-container" style="height: 300px;">
-        <canvas id="historyChart"></canvas>
-      </div>
-    </div>
-  </div>
+        // Initialisation des graphiques
+        let tempChart, humidityChart, powerChart;
 
-  <!-- Sensor Status Table -->
-  <div class="card">
-    <div class="card-header bg-dark text-white">
-      <i class="fas fa-list me-2"></i>Sensor Status
-    </div>
-    <div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-striped table-hover">
-          <thead>
-            <tr>
-              <th>Sensor</th>
-              <th>Type</th>
-              <th>Status</th>
-              <th>Last Reading</th>
-              <th>Location</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>BMP280</td>
-              <td>Temperature/Pressure</td>
-              <td><span class="badge bg-success">Active</span></td>
-              <td>24.5°C, 1013hPa</td>
-              <td>Rack A</td>
-            </tr>
-            <tr>
-              <td>DHT22</td>
-              <td>Temperature/Humidity</td>
-              <td><span class="badge bg-success">Active</span></td>
-              <td>24.3°C, 45%</td>
-              <td>Rack B</td>
-            </tr>
-            <tr>
-              <td>SCT013</td>
-              <td>Current</td>
-              <td><span class="badge bg-success">Active</span></td>
-              <td>1.2kW</td>
-              <td>Main Panel</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
+        // Fonction pour calculer la moyenne des capteurs similaires
+        function calculateAverage(value1, value2) {
+            if (value1 === null && value2 === null) return null;
+            if (value1 === null) return value2;
+            if (value2 === null) return value1;
+            return (value1 + value2) / 2;
+        }
 
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-  // Initialize charts
-  document.addEventListener('DOMContentLoaded', function() {
-    // Temperature Chart
-    const tempCtx = document.getElementById('tempChart').getContext('2d');
-    new Chart(tempCtx, {
-      type: 'line',
-      data: {
-        labels: Array.from({length: 12}, (_, i) => `${i*5} min`),
-        datasets: [{
-          label: 'Temperature (°C)',
-          data: [24.0, 24.1, 24.3, 24.5, 24.4, 24.6, 24.5, 24.4, 24.3, 24.2, 24.1, 24.0],
-          borderColor: 'rgba(13, 110, 253, 1)',
-          backgroundColor: 'rgba(13, 110, 253, 0.1)',
-          tension: 0.4,
-          fill: true
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } }
-      }
-    });
+        // Initialisation des graphiques
+        function initCharts() {
+            // Graphique de température
+            const tempCtx = document.getElementById('tempChart').getContext('2d');
+            tempChart = new Chart(tempCtx, {
+                type: 'line',
+                data: {
+                    labels: timeHistory,
+                    datasets: [{
+                        label: 'Température moyenne (°C)',
+                        data: tempHistory,
+                        borderColor: 'rgba(13, 110, 253, 1)',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#0d6efd'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: '°C'
+                            }
+                        }
+                    }
+                }
+            });
 
-    // Similar chart initialization for humidity, power, and history charts
-    // Would be implemented with real data from backend
-  });
-</script>
-{% endblock %}
+            // Graphique d'humidité
+            const humidityCtx = document.getElementById('humidityChart').getContext('2d');
+            humidityChart = new Chart(humidityCtx, {
+                type: 'line',
+                data: {
+                    labels: timeHistory,
+                    datasets: [{
+                        label: 'Humidité moyenne (%)',
+                        data: humidityHistory,
+                        borderColor: 'rgba(23, 162, 184, 1)',
+                        backgroundColor: 'rgba(23, 162, 184, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#17a2b8'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: '%'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Graphique de puissance
+            const powerCtx = document.getElementById('powerChart').getContext('2d');
+            powerChart = new Chart(powerCtx, {
+                type: 'line',
+                data: {
+                    labels: timeHistory,
+                    datasets: [{
+                        label: 'Courant (A)',
+                        data: currentHistory,
+                        borderColor: 'rgba(40, 167, 69, 1)',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#28a745'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'A'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Met à jour les valeurs dans le dashboard
+        function updateDashboard(data) {
+            // Calcul des moyennes
+            const avgTemp = calculateAverage(data.dht22.temperature, data.bme280.temperature);
+            const avgHumidity = calculateAverage(data.dht22.humidity, data.bme280.humidity);
+            
+            // Calcul de la puissance (230V * courant)
+            const power = data.sct013.current * 230;
+            
+            // Mise à jour des valeurs
+            document.getElementById('temperature-value').textContent = avgTemp !== null ? avgTemp.toFixed(1) + ' °C' : '-- °C';
+            document.getElementById('humidity-value').textContent = avgHumidity !== null ? avgHumidity.toFixed(1) + ' %' : '-- %';
+            document.getElementById('current-value').textContent = data.sct013.current !== null ? data.sct013.current.toFixed(3) + ' A' : '-- A';
+            document.getElementById('power-value').textContent = power !== null ? power.toFixed(1) + ' W' : '-- W';
+            document.getElementById('pressure-value').textContent = data.bme280.pressure !== null ? data.bme280.pressure.toFixed(1) + ' hPa' : '-- hPa';
+            document.getElementById('altitude-value').textContent = data.bme280.altitude !== null ? data.bme280.altitude.toFixed(1) + ' cm' : '-- cm';
+            
+            // Mise à jour des valeurs individuelles
+            document.getElementById('temp-dht22').textContent = data.dht22.temperature !== null ? data.dht22.temperature.toFixed(1) + ' °C' : '--';
+            document.getElementById('temp-bme280').textContent = data.bme280.temperature !== null ? data.bme280.temperature.toFixed(1) + ' °C' : '--';
+            document.getElementById('hum-dht22').textContent = data.dht22.humidity !== null ? data.dht22.humidity.toFixed(1) + ' %' : '--';
+            document.getElementById('hum-bme280').textContent = data.bme280.humidity !== null ? data.bme280.humidity.toFixed(1) + ' %' : '--';
+            
+            // Mise à jour des horodatages
+            document.getElementById('temperature-time').textContent = data.timestamp || '--';
+            document.getElementById('humidity-time').textContent = data.timestamp || '--';
+            document.getElementById('power-time').textContent = data.timestamp || '--';
+            document.getElementById('pressure-time').textContent = data.timestamp || '--';
+            document.getElementById('altitude-time').textContent = data.timestamp || '--';
+            
+            // Mise à jour du tableau des capteurs
+            document.getElementById('bmp280-reading').textContent = data.timestamp || '--';
+            document.getElementById('bmp280-value').textContent = data.bme280.temperature !== null ? 
+                `${data.bme280.temperature.toFixed(1)}°C, ${data.bme280.pressure.toFixed(1)}hPa` : '--';
+            
+            document.getElementById('dht22-reading').textContent = data.timestamp || '--';
+            document.getElementById('dht22-value').textContent = data.dht22.temperature !== null ? 
+                `${data.dht22.temperature.toFixed(1)}°C, ${data.dht22.humidity.toFixed(1)}%` : '--';
+            
+            document.getElementById('sct013-reading').textContent = data.timestamp || '--';
+            document.getElementById('sct013-value').textContent = data.sct013.current !== null ? 
+                `${data.sct013.current.toFixed(3)}A (${power.toFixed(1)}W)` : '--';
+        }
+
+        // Met à jour les historiques et les graphiques
+        function updateCharts(data) {
+            // Calcul des moyennes
+            const avgTemp = calculateAverage(data.dht22.temperature, data.bme280.temperature);
+            const avgHumidity = calculateAverage(data.dht22.humidity, data.bme280.humidity);
+            
+            // Ajout des nouvelles valeurs
+            tempHistory.push(avgTemp);
+            humidityHistory.push(avgHumidity);
+            currentHistory.push(data.sct013.current);
+            timeHistory.push(data.timestamp);
+            
+            // Limite la taille de l'historique
+            if (tempHistory.length > MAX_HISTORY) {
+                tempHistory.shift();
+                humidityHistory.shift();
+                currentHistory.shift();
+                timeHistory.shift();
+            }
+            
+            // Mise à jour des graphiques
+            tempChart.data.labels = timeHistory;
+            tempChart.data.datasets[0].data = tempHistory;
+            tempChart.update();
+            
+            humidityChart.data.labels = timeHistory;
+            humidityChart.data.datasets[0].data = humidityHistory;
+            humidityChart.update();
+            
+            powerChart.data.labels = timeHistory;
+            powerChart.data.datasets[0].data = currentHistory;
+            powerChart.update();
+        }
+
+        // Récupère les données de l'API
+        async function fetchSensorData() {
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error('Erreur API');
+                
+                const data = await response.json();
+                updateDashboard(data);
+                updateCharts(data);
+                
+                // Mise à jour du statut de connexion
+                document.getElementById('connection-status').className = 'status-badge bg-success';
+                document.getElementById('connection-status').innerHTML = 
+                    '<span class="status-indicator status-active"></span> Connecté à l\'API';
+                
+                return true;
+            } catch (e) {
+                // Mise à jour du statut de connexion
+                document.getElementById('connection-status').className = 'status-badge bg-danger';
+                document.getElementById('connection-status').innerHTML = 
+                    '<span class="status-indicator status-inactive"></span> Erreur de connexion';
+                
+                return false;
+            }
+        }
+
+        // Animation de mise à jour pour les valeurs
+        function animateValue(element, newValue) {
+            const oldValue = parseFloat(element.textContent) || 0;
+            const duration = 1000;
+            const startTime = Date.now();
+            
+            function update() {
+                const currentTime = Date.now();
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                const currentValue = oldValue + (newValue - oldValue) * progress;
+                element.textContent = currentValue.toFixed(1) + ' °C';
+                
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                }
+            }
+            
+            update();
+        }
+
+        // Initialisation au chargement de la page
+        document.addEventListener('DOMContentLoaded', function() {
+            initCharts();
+            fetchSensorData();
+            
+            // Configurer l'intervalle de mise à jour automatique
+            setInterval(fetchSensorData, UPDATE_INTERVAL);
+        });
+    </script>
+</body>
+</html>
