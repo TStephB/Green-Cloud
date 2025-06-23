@@ -3,6 +3,7 @@ import threading
 import time
 import random
 import string
+import math
 
 app = Flask(__name__)
 
@@ -18,46 +19,54 @@ simulation = {
     'posts_per_min': 0,
     'total_posts': 0,
     'activity_feed': [],
-    'post_accumulator': 0.0  # to accumulate fractional posts per second
+    'post_accumulator': 0.0,  # to accumulate fractional posts per second
+    'chart_history': []       # pour stocker l'évolution temporelle
 }
 
 simulation_lock = threading.Lock()
 simulation_thread = None
 
+
 def generate_random_post(length):
     letters = string.ascii_letters + string.digits + ' '
     return ''.join(random.choice(letters) for _ in range(length))
 
+def cpu_intensive_task(n=100000):
+    # Simule une charge CPU réelle
+    x = 0.0
+    for i in range(n):
+        x += math.sin(i) * math.cos(i)
+    return x
+
 def simulation_loop():
     global simulation
+    start_time = time.time()
     while True:
         with simulation_lock:
             if not simulation['running']:
                 break
-            if simulation['time_elapsed'] >= simulation['duration'] * 60:
+            elapsed = int(time.time() - start_time)
+            simulation['time_elapsed'] = elapsed
+            if elapsed >= simulation['duration'] * 60:
                 simulation['running'] = False
                 break
-
-            simulation['time_elapsed'] += 1
-
             # Update active users
             if simulation['random_users']:
                 simulation['active_users'] = int(simulation['user_count'] * (0.3 + random.random() * 0.7))
             else:
                 simulation['active_users'] = simulation['user_count']
-
             # Calculate posts per second as float
             posts_per_sec = simulation['post_rate'] / 60.0
             simulation['post_accumulator'] += posts_per_sec
-
             # Determine how many posts to generate this second
             posts_this_second = int(simulation['post_accumulator'])
             simulation['post_accumulator'] -= posts_this_second
-
-            simulation['posts_per_min'] = posts_this_second * 60  # approximate for frontend display
+            simulation['posts_per_min'] = int(posts_per_sec * 60)  # pour frontend
             simulation['total_posts'] += posts_this_second
-
-            # Generate activity feed entries
+            # Génère la charge CPU réelle (par utilisateur actif)
+            for _ in range(simulation['active_users']):
+                cpu_intensive_task(20000)  # Ajuste n pour la charge souhaitée
+            # Génère les posts
             for _ in range(posts_this_second):
                 user_id = random.randint(1, simulation['user_count']) if simulation['random_users'] else 1
                 post_text = generate_random_post(simulation['post_length'])
@@ -66,12 +75,18 @@ def simulation_loop():
                     'text': post_text,
                     'timestamp': time.time()
                 })
-                # Keep feed size reasonable
                 if len(simulation['activity_feed']) > 100:
                     simulation['activity_feed'].pop()
-
+            # Ajoute l'évolution temporelle pour la courbe
+            simulation['chart_history'].append({
+                'time': elapsed,
+                'active_users': simulation['active_users'],
+                'posts_per_min': simulation['posts_per_min'],
+                'total_posts': simulation['total_posts']
+            })
+            if len(simulation['chart_history']) > 300:
+                simulation['chart_history'].pop(0)
         time.sleep(1)
-
 
 @app.route('/start', methods=['POST'])
 def start_simulation():
@@ -80,11 +95,9 @@ def start_simulation():
     required_fields = ['user_count', 'post_rate', 'post_length', 'duration', 'random_users']
     if not data or not all(field in data for field in required_fields):
         return jsonify({'error': 'Missing parameters'}), 400
-
     with simulation_lock:
         if simulation['running']:
             return jsonify({'error': 'Simulation already running'}), 400
-
         simulation.update({
             'running': True,
             'user_count': int(data['user_count']),
@@ -97,12 +110,11 @@ def start_simulation():
             'posts_per_min': 0,
             'total_posts': 0,
             'activity_feed': [],
-            'post_accumulator': 0.0
+            'post_accumulator': 0.0,
+            'chart_history': []
         })
-
     simulation_thread = threading.Thread(target=simulation_loop, daemon=True)
     simulation_thread.start()
-
     return jsonify({'message': 'Simulation started'})
 
 @app.route('/stop', methods=['POST'])
@@ -118,13 +130,14 @@ def stop_simulation():
 def get_status():
     with simulation_lock:
         if not simulation['running']:
-            return jsonify({'running': False})
+            return jsonify({'running': False, 'chart_history': simulation['chart_history']})
         return jsonify({
             'running': True,
             'active_users': simulation['active_users'],
             'posts_per_min': simulation['posts_per_min'],
             'total_posts': simulation['total_posts'],
-            'activity_feed': simulation['activity_feed'][:20]  # limit feed size
+            'activity_feed': simulation['activity_feed'][:20],
+            'chart_history': simulation['chart_history']
         })
 
 if __name__ == '__main__':

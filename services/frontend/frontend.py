@@ -213,6 +213,8 @@ def proxy_status():
     except requests.exceptions.RequestException as e:
         return jsonify({'error': f'Workload tester error: {e}'}), 503
 
+MODEL_API_URL = 'http://172.22.2.247:8000/predict';
+
 if __name__ == '__main__':
     os.makedirs("templates", exist_ok=True)
     os.makedirs("static", exist_ok=True)

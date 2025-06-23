@@ -1,12 +1,11 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="container">
-  <h1 class="mb-4"><i class="fas fa-users me-2"></i>Workload Simulator</h1>
-  
+  <h1 class="mb-4 text-center"><i class="fas fa-users me-2"></i>Workload Simulator</h1>
   <div class="row g-4 mb-4">
     <!-- Simulation Controls -->
     <div class="col-md-5">
-      <div class="card h-100">
+      <div class="card h-100 shadow-lg border-0">
         <div class="card-header bg-primary text-white">
           <i class="fas fa-tachometer-alt me-2"></i>Load Parameters
         </div>
@@ -44,10 +43,9 @@
         </div>
       </div>
     </div>
-
     <!-- Live Stats -->
     <div class="col-md-7">
-      <div class="card h-100">
+      <div class="card h-100 shadow-lg border-0">
         <div class="card-header bg-success text-white">
           <i class="fas fa-chart-bar me-2"></i>Live Statistics
         </div>
@@ -66,16 +64,15 @@
               <h2 id="totalPosts" class="text-success">0</h2>
             </div>
           </div>
-          <div class="chart-container" style="height: 200px;">
+          <div class="chart-container" style="height: 260px;">
             <canvas id="loadChart"></canvas>
           </div>
         </div>
       </div>
     </div>
   </div>
-
   <!-- Activity Feed -->
-  <div class="card">
+  <div class="card shadow-lg border-0">
     <div class="card-header bg-dark text-white">
       <i class="fas fa-comments me-2"></i>Simulated Activity Feed
     </div>
@@ -90,68 +87,77 @@
     </div>
   </div>
 </div>
-
+<style>
+  .card { border-radius: 18px; }
+  .card-header { font-size: 1.2rem; letter-spacing: 1px; }
+  .btn-group .btn { font-size: 1.1rem; }
+  .btn-outline-success, .btn-outline-danger { transition: 0.2s; }
+  .btn-outline-success:hover { background: #198754; color: #fff; }
+  .btn-outline-danger:hover { background: #dc3545; color: #fff; }
+  .chart-container { background: #f8fafc; border-radius: 12px; padding: 10px; }
+</style>
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-    // === only changed this block ===
     const START_URL  = "{{ url_for('proxy_start') }}";
     const STATUS_URL = "{{ url_for('proxy_status') }}";
     const STOP_URL   = "{{ url_for('proxy_stop') }}";
-    let simulationInterval;
-    // initialize Chart.js as before...
+    let simulationInterval = null;
+    // Chart.js courbe continue
     const ctx = document.getElementById('loadChart').getContext('2d');
     const simChart = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: Array.from({length: 10}, (_, i) => i),
+        labels: [],
         datasets: [
-          { label: 'Active Users', data: [], tension: 0.4 },
-          { label: 'Posts/Min',    data: [], tension: 0.4 }
+          { label: 'Active Users', data: [], borderColor: '#0d6efd', backgroundColor: 'rgba(13,110,253,0.1)', tension: 0.3, fill: true },
+          { label: 'Posts/Min',    data: [], borderColor: '#20c997', backgroundColor: 'rgba(32,201,151,0.1)', tension: 0.3, fill: true }
         ]
       },
-      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        plugins: { legend: { display: true } },
+        scales: {
+          x: { title: { display: true, text: 'Time (s)' } },
+          y: { beginAtZero: true }
+        }
+      }
     });
-
     function safeJson(res) {
       if (!res.ok) {
         return res.json?.().catch(() => res.text())
-          .then(err => { throw new Error(err.error || err); });
+          .then(err => { throw new Error((err && err.error) || err || 'Unknown error'); });
       }
       return res.json();
     }
-
-    function updateChartData(activeUsers, postsPerMin) {
-      if (simChart.data.labels.length >= 10) {
-        simChart.data.labels.shift();
-        simChart.data.datasets[0].data.shift();
-        simChart.data.datasets[1].data.shift();
-      }
-      simChart.data.labels.push(simChart.data.labels.length);
-      simChart.data.datasets[0].data.push(activeUsers);
-      simChart.data.datasets[1].data.push(postsPerMin);
+    function updateChartFromHistory(history) {
+      simChart.data.labels = history.map(h => h.time);
+      simChart.data.datasets[0].data = history.map(h => h.active_users);
+      simChart.data.datasets[1].data = history.map(h => h.posts_per_min);
       simChart.update();
     }
-
     function pollStatus() {
       fetch(STATUS_URL)
         .then(safeJson)
         .then(status => {
           if (!status.running) {
             clearInterval(simulationInterval);
+            simulationInterval = null;
             document.getElementById('startSimulation').disabled = false;
             document.getElementById('stopSimulation').disabled  = true;
+            updateChartFromHistory(status.chart_history || []);
             return;
           }
           document.getElementById('activeUsers').textContent = status.active_users;
           document.getElementById('postsPerMin').textContent = status.posts_per_min;
           document.getElementById('totalPosts').textContent = status.total_posts;
-          updateChartData(status.active_users, status.posts_per_min);
-
+          updateChartFromHistory(status.chart_history || []);
           const feedContainer = document.querySelector('#activityFeed .list-group-flush');
           feedContainer.innerHTML = '';
-          status.activity_feed.forEach(post => {
+          (status.activity_feed || []).forEach(post => {
             const el = document.createElement('div');
             el.className = 'list-group-item';
             el.innerHTML = `
@@ -167,11 +173,11 @@
         .catch(err => {
           console.error(err);
           clearInterval(simulationInterval);
+          simulationInterval = null;
           document.getElementById('startSimulation').disabled = false;
           document.getElementById('stopSimulation').disabled  = true;
         });
     }
-
     document.getElementById('startSimulation').addEventListener('click', function() {
       const payload = {
         user_count:   +document.getElementById('userCount').value,
@@ -180,11 +186,9 @@
         duration:     +document.getElementById('duration').value,
         random_users: document.getElementById('randomUsers').checked
       };
-
       this.disabled = true;
       document.getElementById('stopSimulation').disabled = false;
       document.querySelector('#activityFeed .list-group-flush').innerHTML = '';
-
       fetch(START_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -193,7 +197,7 @@
       .then(safeJson)
       .then(data => {
         if (data.error) throw new Error(data.error);
-        simulationInterval = setInterval(pollStatus, 1000);
+        if (!simulationInterval) simulationInterval = setInterval(pollStatus, 1000);
       })
       .catch(err => {
         alert(err.message);
@@ -201,17 +205,16 @@
         document.getElementById('stopSimulation').disabled  = true;
       });
     });
-
     document.getElementById('stopSimulation').addEventListener('click', function() {
       fetch(STOP_URL, { method: 'POST' })
         .then(() => {
           clearInterval(simulationInterval);
+          simulationInterval = null;
           document.getElementById('startSimulation').disabled = false;
           document.getElementById('stopSimulation').disabled  = true;
         })
         .catch(err => console.error(err));
     });
-    // === end of changed block ===
   });
 </script>
 {% endblock %}
